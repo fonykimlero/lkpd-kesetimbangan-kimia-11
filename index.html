@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -49,7 +49,13 @@
         .tab-content { display: none; animation: fadeIn 0.4s ease-in-out; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
+
+        /* Saat cetak PDF: matikan animasi agar html2canvas tidak menangkap opacity setengah */
+        .is-printing .tab-content {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
         /* Gelas Kimia (Beaker) CSS untuk Simulasi Le Chatelier */
         .beaker {
             width: 120px; height: 160px;
@@ -1166,10 +1172,38 @@
                 margin:       [10, 10, 15, 10],
                 filename:     `LKPD_Kimia_${nama.replace(/\s+/g, '_')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, scrollY: 0, letterRendering: true }, 
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+                html2canvas:  {
+                    scale: 2,
+                    useCORS: true,
+                    scrollY: 0,
+                    letterRendering: true,
+                    backgroundColor: '#ffffff',
+                    onclone: (clonedDoc) => {
+                        const liveEls  = document.querySelectorAll('main *');
+                        const cloneEls = clonedDoc.querySelectorAll('main *');
+                        liveEls.forEach((liveEl, i) => {
+                            const cloneEl = cloneEls[i];
+                            if (!cloneEl) return;
+                            const cs = window.getComputedStyle(liveEl);
 
+                            const bg = cs.backgroundColor;
+                            if (bg && bg !== 'rgba(0, 0, 0, 0)') {
+                                cloneEl.style.backgroundColor = bg;
+                            }
+                            const col = cs.color;
+                            if (col) cloneEl.style.color = col;
+
+                            const bd = cs.borderColor;
+                            if (bd && bd !== 'rgba(0, 0, 0, 0)') {
+                                cloneEl.style.borderColor = bd;
+                            }
+                            cloneEl.style.boxShadow = 'none';
+                       });
+             }
+    },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+};
+            
             // 5. Eksekusi pembuatan PDF
             setTimeout(() => {
                 html2pdf().set(opt).from(element).save().then(() => {
