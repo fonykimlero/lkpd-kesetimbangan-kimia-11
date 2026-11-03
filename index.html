@@ -71,6 +71,32 @@
         }
         /* Tinggi baris lebih longgar di area dengan rumus */
         .math-line { line-height: 1.8 !important; }
+
+        /* FIX PAGE BREAK: elemen-elemen berikut tidak boleh terpotong di tengah saat cetak PDF */
+        .quiz-item,
+        .bg-white,
+        .bg-slate-50,
+        .bg-blue-50,
+        .bg-orange-50,
+        .bg-amber-50,
+        .bg-chem-50,
+        .bg-rose-50,
+        table,
+        tr,
+        .rounded-xl,
+        .rounded-2xl,
+        .rounded-lg {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        /* Heading kegiatan harus tetap utuh dengan kontennya */
+        h2, h3, h4, h5 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
+        /* Tabel: header mengulang di halaman baru kalau terpaksa pecah */
+        thead { display: table-header-group !important; }
+        tr { page-break-inside: avoid !important; }
         /* Gelas Kimia (Beaker) CSS untuk Simulasi Le Chatelier */
         .beaker {
             width: 120px; height: 160px;
@@ -1236,7 +1262,11 @@
                        });
              }
     },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak:    {
+        mode:      ['avoid-all', 'css', 'legacy'],
+        avoid:     ['.quiz-item', '.bg-white', '.bg-slate-50', '.bg-blue-50', '.bg-orange-50', '.bg-amber-50', '.bg-chem-50', '.bg-rose-50', 'table', 'tr', '.rounded-xl', '.rounded-2xl', '.rounded-lg']
+    }
 };
             
             // 5. Eksekusi pembuatan PDF — TUNGGU MathJax selesai dulu
