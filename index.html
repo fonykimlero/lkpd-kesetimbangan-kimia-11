@@ -95,6 +95,20 @@
             input, select { color: #000000 !important; -webkit-text-fill-color: #000000 !important; opacity: 1 !important; background-color: #ffffff !important; border: 1px solid #64748b !important; font-weight: 600 !important; }
             textarea { color: #000000 !important; -webkit-text-fill-color: #000000 !important; opacity: 1 !important; background-color: #ffffff !important; border: 1px solid #64748b !important; font-weight: 500 !important; }
         }
+
+        /* Banner cetak: tersembunyi di layar, muncul saat cetak PDF */
+        .print-banner {
+            display: none;
+        }
+        body.is-printing .print-banner {
+            display: flex !important;
+        }
+
+        /* Saat cetak PDF, pastikan logo di banner terlihat jelas */
+        body.is-printing .print-banner img {
+            max-height: 80px;
+            width: auto;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
