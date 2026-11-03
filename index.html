@@ -15,7 +15,7 @@
         svg: { fontCache: 'global' }
       };
     </script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js"></script>
     
     <!-- Tailwind CSS untuk Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1220,26 +1220,35 @@
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
 };
             
-            // 5. Eksekusi pembuatan PDF
-            document.body.classList.add('is-printing');   // ← BARU
-            setTimeout(() => {
+            // 5. Eksekusi pembuatan PDF — TUNGGU MathJax selesai dulu
+            document.body.classList.add('is-printing');
+
+            const mathPromise = (window.MathJax && MathJax.typesetPromise)
+                ? MathJax.typesetPromise([document.querySelector('main')])
+                : Promise.resolve();
+
+            mathPromise.then(() => {
+                // Jeda 200ms agar layout SVG MathJax stabil
+                return new Promise(resolve => setTimeout(resolve, 200));
+            }).then(() => {
                 html2pdf().set(opt).from(element).save().then(() => {
-                    document.body.classList.remove('is-printing');   // ← BARU
+                    document.body.classList.remove('is-printing');
                     // Kembalikan ke tampilan normal setelah selesai download
                     document.querySelectorAll('.tab-content').forEach(tab => {
                         tab.style.display = '';
                         tab.classList.remove('active');
                     });
                     document.getElementById('tab-refleksi').classList.add('active');
-                    
+        
                     noPrintElements.forEach(el => el.style.display = '');
                     element.style.backgroundColor = originalBg;
                     closeModal();
                 }).catch(err => {
-                    document.body.classList.remove('is-printing');   // ← BARU
+                    document.body.classList.remove('is-printing');
                     console.error(err);
                     showModal("Terjadi Kesalahan", "Gagal membuat file PDF. Pastikan memori atau penyimpanan perangkat Anda cukup.");
                 });
+        });
             }, 800); 
         }
     </script>
