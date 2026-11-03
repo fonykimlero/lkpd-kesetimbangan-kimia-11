@@ -1205,8 +1205,10 @@
 };
             
             // 5. Eksekusi pembuatan PDF
+            document.body.classList.add('is-printing');   // ← BARU
             setTimeout(() => {
                 html2pdf().set(opt).from(element).save().then(() => {
+                    document.body.classList.remove('is-printing');   // ← BARU
                     // Kembalikan ke tampilan normal setelah selesai download
                     document.querySelectorAll('.tab-content').forEach(tab => {
                         tab.style.display = '';
@@ -1218,6 +1220,7 @@
                     element.style.backgroundColor = originalBg;
                     closeModal();
                 }).catch(err => {
+                    document.body.classList.remove('is-printing');   // ← BARU
                     console.error(err);
                     showModal("Terjadi Kesalahan", "Gagal membuat file PDF. Pastikan memori atau penyimpanan perangkat Anda cukup.");
                 });
