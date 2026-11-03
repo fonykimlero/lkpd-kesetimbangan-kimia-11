@@ -1232,9 +1232,9 @@
             const opt = {
                 margin:       [10, 10, 15, 10],
                 filename:     `LKPD_Kimia_${nama.replace(/\s+/g, '_')}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
+                image:        { type: 'jpeg', quality: 0.85, compression: 'FAST' },
                 html2canvas:  {
-                    scale: 2,
+                    scale: 1.5,
                     useCORS: true,
                     scrollY: 0,
                     letterRendering: true,
@@ -1262,7 +1262,7 @@
                        });
              }
     },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
     pagebreak:    {
         mode:      ['avoid-all', 'css', 'legacy'],
         avoid:     ['.quiz-item', '.bg-white', '.bg-slate-50', '.bg-blue-50', '.bg-orange-50', '.bg-amber-50', '.bg-chem-50', '.bg-rose-50', 'table', 'tr', '.rounded-xl', '.rounded-2xl', '.rounded-lg']
