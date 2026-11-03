@@ -64,40 +64,54 @@
             line-height: 1 !important;
             padding: 0 0.05em !important;
             display: inline-block !important;
+            color: #000000 !important;        /* paksa hitam pekat, bukan abu */
+            font-weight: 600 !important;      /* tebal agar tajam di PDF */
         }
         mjx-container[display="true"] {
             display: block !important;
             margin: 0.4em 0 !important;
             text-align: center;
+            color: #000000 !important;
+            font-weight: 700 !important;
+        }
+        /* Paksa teks CHTML MathJax juga hitam pekat */
+        mjx-container mjx-math mjx-mrow,
+        mjx-container mjx-mi,
+        mjx-container mjx-mn,
+        mjx-container mjx-mo,
+        mjx-container mjx-mtext {
+            color: #000000 !important;
         }
         /* Tinggi baris lebih longgar di area dengan rumus */
         .math-line { line-height: 1.8 !important; }
 
-        /* FIX PAGE BREAK: elemen-elemen berikut tidak boleh terpotong di tengah saat cetak PDF */
+        /* FIX PAGE BREAK — HANYA elemen KRITIKAL kecil yang harus utuh:
+           - quiz-item (soal pilihan ganda + opsi jawaban tidak boleh terbelah)
+           - table & tr (tabel MRS tidak boleh terbelah di tengah baris)
+           - Elemen .keep-together (dipakai eksplisit untuk kartu kecil)
+           Kartu besar (.bg-white, .bg-blue-50, dll) BOLEH pecah halaman — supaya tidak ada ruang kosong ekstrem */
         .quiz-item,
-        .bg-white,
-        .bg-slate-50,
-        .bg-blue-50,
-        .bg-orange-50,
-        .bg-amber-50,
-        .bg-chem-50,
-        .bg-rose-50,
         table,
         tr,
-        .rounded-xl,
-        .rounded-2xl,
-        .rounded-lg {
+        thead,
+        .keep-together {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
-        /* Heading kegiatan harus tetap utuh dengan kontennya */
+        /* Heading tidak boleh yatim di akhir halaman (heading di bawah, konten di halaman baru) */
         h2, h3, h4, h5 {
             page-break-after: avoid !important;
             break-after: avoid !important;
+            page-break-before: auto;
+        }
+        /* Heading besar (KEGIATAN / REFLEKSI) jangan mulai di akhir halaman kosong */
+        h2 {
+            page-break-before: auto;
         }
         /* Tabel: header mengulang di halaman baru kalau terpaksa pecah */
         thead { display: table-header-group !important; }
         tr { page-break-inside: avoid !important; }
+
         /* Gelas Kimia (Beaker) CSS untuk Simulasi Le Chatelier */
         .beaker {
             width: 120px; height: 160px;
@@ -198,7 +212,7 @@
                     <label for="namaSiswa" class="block text-xs font-semibold text-slate-500 mb-1 ml-1">Nama Lengkap</label>
                     <input type="text" id="namaSiswa" placeholder="Masukkan nama..." class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:border-chem-500 focus:ring-1 focus:ring-chem-500 outline-none transition">
                 </div>
-                <div class="w-full sm:w-1/3">
+                <div class="w-full sm:w-1/4">
                     <label for="kelasSiswa" class="block text-xs font-semibold text-slate-500 mb-1 ml-1">Kelas</label>
                     <select id="kelasSiswa" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:border-chem-500 focus:ring-1 focus:ring-chem-500 outline-none transition cursor-pointer">
                         <option value="" disabled selected>Pilih Kelas...</option>
@@ -206,6 +220,10 @@
                         <option value="11-8">11-8</option>
                         <option value="11-9">11-9</option>
                     </select>
+                </div>
+                <div class="w-full sm:w-1/5">
+                    <label for="absenSiswa" class="block text-xs font-semibold text-slate-500 mb-1 ml-1">No. Absen</label>
+                    <input type="number" id="absenSiswa" min="1" max="50" placeholder="01" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:border-chem-500 focus:ring-1 focus:ring-chem-500 outline-none transition text-center font-semibold">
                 </div>
             </div>
         </div>
@@ -292,6 +310,61 @@
                         </div>
                     </div>
 
+                    <hr class="border-slate-200">
+
+                    <!-- Grafik Konsentrasi vs Waktu -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-chart-line text-indigo-500 mr-2"></i> Visualisasi Kurva Konsentrasi vs Waktu (Interaktif)</h3>
+                        <p class="text-sm text-slate-700 mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-200">
+                            Bayangkan reaksi $H_{2(g)} + I_{2(g)} \rightleftharpoons 2HI_{(g)}$ dimulai dengan hanya reaktan (H₂ dan I₂) masing-masing 1.0 M. Tekan tombol <strong>Play</strong> atau geser slider waktu untuk melihat bagaimana konsentrasi berubah hingga mencapai kesetimbangan.
+                        </p>
+
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm keep-together">
+                            <!-- Canvas chart (lebih ramah html2canvas daripada SVG) -->
+                            <canvas id="konsentrasiChart" width="600" height="320" class="w-full h-auto" style="max-width: 100%;"></canvas>
+                            
+                            <!-- Kontrol animasi -->
+                            <div class="mt-3 flex flex-col sm:flex-row items-center gap-3 no-print">
+                                <button id="btnPlayKurva" onclick="toggleKurvaAnim()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2">
+                                    <i class="fa-solid fa-play"></i> <span id="playLabel">Play</span>
+                                </button>
+                                <div class="flex-grow w-full">
+                                    <label class="text-xs font-semibold text-slate-600 mb-1 block">Geser untuk simulasikan waktu reaksi:</label>
+                                    <input type="range" id="sliderWaktuKurva" min="0" max="100" value="0" oninput="updateKurva(this.value)" class="w-full accent-indigo-600 cursor-pointer">
+                                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                                        <span>t = 0 (awal)</span>
+                                        <span>t_setimbang</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Status indikator -->
+                            <div id="statusKurva" class="text-xs text-center mt-2 font-semibold text-slate-600 bg-slate-50 py-1.5 rounded">Status: Sistem pada t = 0 (belum ada produk terbentuk)</div>
+                            
+                            <!-- Legenda -->
+                            <div class="flex flex-wrap justify-center gap-3 mt-2 text-xs">
+                                <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-blue-600"></span> [H₂], [I₂] (reaktan)</span>
+                                <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-red-600"></span> [HI] (produk)</span>
+                                <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-teal-600 border-dashed"></span> Garis kesetimbangan</span>
+                            </div>
+
+                            <!-- Pertanyaan inkuiri grafik -->
+                            <div class="mt-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <label class="block text-sm font-semibold text-slate-700 mb-2"><i class="fa-solid fa-clipboard-question text-chem-500 mr-1"></i>Berdasarkan grafik di atas, jawab pertanyaan berikut:</label>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">a. Pada titik mana (t₁, t₂, atau t_setimbang) keadaan setimbang tercapai? Bagaimana kamu tahu?</label>
+                                        <textarea class="w-full p-2 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">b. Setelah keadaan setimbang tercapai, apakah reaksi berhenti? Apa yang sebenarnya terjadi pada level molekuler?</label>
+                                        <textarea class="w-full p-2 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mt-6 flex justify-end no-print">
                         <button onclick="switchTab('tab-tetapan')" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-md transition active:scale-95 text-sm flex items-center gap-2">
                             Simpan & Lanjutkan <i class="fa-solid fa-arrow-right"></i>
@@ -340,10 +413,13 @@
                                 </ul>
                             </div>
                         </div>
-                        <div class="mt-4 bg-white p-4 rounded-lg border border-slate-200 text-sm text-slate-700 text-center shadow-sm space-y-3">
-                            <div class="math-line flex flex-wrap justify-center items-center gap-x-2 gap-y-2">
-                                <span class="font-bold text-slate-800">Hubungan $K_p$ dan $K_c$:</span>
-                                <span class="font-mono text-base font-bold bg-slate-100 px-3 py-1.5 rounded inline-flex items-center">$K_p = K_c(RT)^{\Delta n}$</span>
+                        <div class="mt-4 bg-white p-4 rounded-lg border border-slate-200 text-sm text-slate-700 text-center shadow-sm space-y-4 keep-together">
+                            <div class="font-bold text-slate-800 math-line">
+                                Hubungan $K_p$ dan $K_c$:
+                            </div>
+                            <!-- Rumus utama sebagai DISPLAY MATH (blok terpusat) agar tidak overlap -->
+                            <div class="bg-slate-100 px-4 py-3 rounded-lg">
+                                $$K_p = K_c(RT)^{\Delta n}$$
                             </div>
                             <div class="text-xs text-slate-500 math-line">
                                 <em>(Dimana $\Delta n = \text{total koefisien produk gas} - \text{total koefisien reaktan gas}$)</em>
@@ -353,54 +429,70 @@
                     
                     <hr class="border-slate-200">
 
+                    <div class="keep-together">
                     <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-table list-alt text-amber-500 mr-2"></i> Simulasi Tabel MRS (Interaktif)</h3>
-                    <p class="text-sm text-slate-700">Perhatikan reaksi kesetimbangan pembentukan asam iodida berikut:<br>
-                    <span class="block text-center text-lg font-bold my-4 font-mono bg-slate-50 py-3 rounded-lg border border-slate-200">$H_{2(g)} + I_{2(g)} \rightleftharpoons 2HI_{(g)}$</span>
+                    <p class="text-sm text-slate-700 mb-3">Perhatikan reaksi kesetimbangan pembentukan asam iodida berikut:<br>
+                    <span class="block text-center text-lg font-bold my-2 font-mono bg-slate-50 py-2 rounded-lg border border-slate-200">$H_{2(g)} + I_{2(g)} \rightleftharpoons 2HI_{(g)}$</span>
                     </p>
-                    <p class="text-sm text-slate-700 font-semibold mb-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                        <strong>Tugas 2:</strong> Lengkapilah Tabel Mula-mula, Reaksi, Setimbang (MRS) di bawah ini. <br>
-                        <span class="font-normal text-xs text-amber-800">*Catatan: Tambahkan tanda minus (-) pada baris "Reaksi" untuk reaktan yang berkurang, dan tanda plus (+) untuk produk yang bertambah.</span>
+
+                    <!-- Data Eksperimen yang Jelas -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-sm text-slate-700">
+                        <h4 class="font-bold text-blue-900 mb-2 text-sm"><i class="fa-solid fa-flask-vial text-blue-500 mr-1"></i>Data Eksperimen:</h4>
+                        <p class="mb-2">Pada suhu <strong>700 K</strong>, sebanyak <strong>1.0 mol gas $H_2$</strong> dan <strong>1.0 mol gas $I_2$</strong> dimasukkan ke dalam wadah tertutup bervolume <strong>1.0 liter</strong>. Awalnya belum ada $HI$ yang terbentuk.</p>
+                        <p class="mb-2">Setelah kesetimbangan tercapai, dilakukan pengukuran dan <strong>terdeteksi bahwa 0.5 mol gas $H_2$ telah bereaksi</strong> (terurai untuk membentuk produk).</p>
+                        <div class="bg-white p-3 rounded border border-slate-200 mt-2 text-xs text-slate-600">
+                            <strong>Petunjuk mengerjakan MRS:</strong>
+                            <ol class="list-decimal pl-5 mt-1 space-y-0.5">
+                                <li>Baris <strong>Mula-mula</strong> sudah diisi — itu kondisi awal sebelum reaksi.</li>
+                                <li>Baris <strong>Reaksi</strong>: isi perubahan konsentrasi. Reaktan berkurang (tanda minus), produk bertambah (tanda plus). Gunakan koefisien reaksi sebagai perbandingan stoikiometri.</li>
+                                <li>Baris <strong>Setimbang</strong> = Mula-mula + Reaksi. Hitung dan isi hasil akhirnya.</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <p class="text-sm text-slate-700 font-semibold mb-2 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                        <strong>Tugas 2:</strong> Berdasarkan data eksperimen di atas, lengkapilah Tabel MRS berikut. Tuliskan angka dengan tanda yang sesuai (negatif untuk reaktan yang berkurang, positif untuk produk yang bertambah).
                     </p>
 
                     <!-- Tabel Interaktif MRS -->
-                    <div class="overflow-x-auto bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+                    <div class="overflow-x-auto bg-white rounded-xl border border-slate-200 shadow-sm mb-3">
                         <table class="w-full text-center border-collapse">
                             <thead>
                                 <tr class="bg-chem-100 text-chem-900 text-sm">
-                                    <th class="p-3 border-b border-r border-slate-200">Komponen</th>
-                                    <th class="p-3 border-b border-r border-slate-200 font-mono">$H_2$</th>
-                                    <th class="p-3 border-b border-r border-slate-200 font-mono">$I_2$</th>
-                                    <th class="p-3 border-b border-slate-200 font-mono">$2HI$</th>
+                                    <th class="p-2 border-b border-r border-slate-200">Komponen</th>
+                                    <th class="p-2 border-b border-r border-slate-200 font-mono">$H_2$</th>
+                                    <th class="p-2 border-b border-r border-slate-200 font-mono">$I_2$</th>
+                                    <th class="p-2 border-b border-slate-200 font-mono">$2HI$</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr class="text-sm text-slate-700 bg-slate-50">
-                                    <td class="p-3 border-b border-r border-slate-200 font-bold text-left">Mula-mula (M)</td>
-                                    <td class="p-3 border-b border-r border-slate-200">1.0</td>
-                                    <td class="p-3 border-b border-r border-slate-200">1.0</td>
-                                    <td class="p-3 border-b border-slate-200">0.0</td>
+                                    <td class="p-2 border-b border-r border-slate-200 font-bold text-left">Mula-mula (M)</td>
+                                    <td class="p-2 border-b border-r border-slate-200">1.0</td>
+                                    <td class="p-2 border-b border-r border-slate-200">1.0</td>
+                                    <td class="p-2 border-b border-slate-200">0.0</td>
                                 </tr>
                                 <tr class="text-sm text-slate-700">
-                                    <td class="p-3 border-b border-r border-slate-200 font-bold text-left">Reaksi (M)</td>
-                                    <td class="p-3 border-b border-r border-slate-200">
+                                    <td class="p-2 border-b border-r border-slate-200 font-bold text-left">Reaksi (M)</td>
+                                    <td class="p-2 border-b border-r border-slate-200">
                                         <input type="text" id="rH2" placeholder="-0.5" class="w-16 p-1.5 text-center border border-slate-300 rounded focus:ring-1 focus:ring-chem-500 outline-none transition">
                                     </td>
-                                    <td class="p-3 border-b border-r border-slate-200">
+                                    <td class="p-2 border-b border-r border-slate-200">
                                         <input type="text" id="rI2" placeholder="-..." class="w-16 p-1.5 text-center border border-slate-300 rounded focus:ring-1 focus:ring-chem-500 outline-none transition">
                                     </td>
-                                    <td class="p-3 border-b border-slate-200">
+                                    <td class="p-2 border-b border-slate-200">
                                         <input type="text" id="rHI" placeholder="+..." class="w-16 p-1.5 text-center border border-slate-300 rounded focus:ring-1 focus:ring-chem-500 outline-none transition">
                                     </td>
                                 </tr>
                                 <tr class="text-sm text-slate-700 bg-slate-50">
-                                    <td class="p-3 border-r border-slate-200 font-bold text-left">Setimbang (M)</td>
-                                    <td class="p-3 border-r border-slate-200">
+                                    <td class="p-2 border-r border-slate-200 font-bold text-left">Setimbang (M)</td>
+                                    <td class="p-2 border-r border-slate-200">
                                         <input type="text" id="sH2" placeholder="..." class="w-16 p-1.5 text-center border border-slate-300 rounded focus:ring-1 focus:ring-chem-500 outline-none transition">
                                     </td>
-                                    <td class="p-3 border-r border-slate-200">
+                                    <td class="p-2 border-r border-slate-200">
                                         <input type="text" id="sI2" placeholder="..." class="w-16 p-1.5 text-center border border-slate-300 rounded focus:ring-1 focus:ring-chem-500 outline-none transition">
                                     </td>
-                                    <td class="p-3 border-slate-200">
+                                    <td class="p-2 border-slate-200">
                                         <input type="text" id="sHI" placeholder="..." class="w-16 p-1.5 text-center border border-slate-300 rounded focus:ring-1 focus:ring-chem-500 outline-none transition">
                                     </td>
                                 </tr>
@@ -408,10 +500,11 @@
                         </table>
                     </div>
                     
-                    <div class="text-center mb-6 no-print">
+                    <div class="text-center mb-4 no-print">
                         <button onclick="cekTabelMRS()" class="bg-chem-600 hover:bg-chem-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition active:scale-95 text-sm"><i class="fa-solid fa-check mr-2"></i>Cek Jawaban Tabel</button>
                         <p id="pesanTabelMRS" class="mt-3 text-sm font-semibold hidden rounded-md py-2 px-4 inline-block"></p>
                     </div>
+                    </div> <!-- end .keep-together MRS -->
 
                     <hr class="border-slate-200">
 
@@ -430,6 +523,122 @@
                             <div class="bg-chem-50 p-5 rounded-xl border border-chem-200 shadow-sm">
                                 <label class="block text-sm font-semibold text-chem-900 mb-2">3. Dalam aturan hukum kesetimbangan, mengapa wujud zat Padatan (s) dan Cairan Murni (l) tidak dimasukkan ke dalam perhitungan $K_c$ ataupun $K_p$?</label>
                                 <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Jawabanmu..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <!-- KONSEP Qc (Quotient Reaction) -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-divide text-amber-600 mr-2"></i> Konsep $Q_c$ (Reaction Quotient) — Menentukan Arah Reaksi</h3>
+                        <p class="text-sm text-slate-700 mb-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                            $K_c$ hanya memberi tahu kita kondisi <em>saat sudah setimbang</em>. Tapi bagaimana jika kita ingin tahu <strong>arah reaksi dari kondisi awal tertentu</strong>? Di sinilah peran $Q_c$ (quotient reaksi). Rumusnya <strong>sama</strong> dengan $K_c$, bedanya $Q_c$ dihitung dari konsentrasi <strong>seketika</strong> (belum tentu setimbang), sedangkan $K_c$ dari konsentrasi <strong>setimbang</strong>.
+                        </p>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="text-center mb-4">
+                                <span class="font-mono text-base font-bold bg-slate-100 px-4 py-2 rounded">$Q_c = \dfrac{[C]^c [D]^d}{[A]^a [B]^b}$</span>
+                                <span class="text-xs text-slate-500 block mt-2">(pakai konsentrasi seketika, bukan setimbang)</span>
+                            </div>
+
+                            <h4 class="font-bold text-slate-800 mb-2 text-sm"><i class="fa-solid fa-table text-chem-500 mr-1"></i> Tabel Keputusan Arah Reaksi</h4>
+                            <div class="overflow-x-auto mb-4">
+                                <table class="w-full text-center border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-chem-100 text-chem-900">
+                                            <th class="p-2.5 border border-slate-200">Kondisi</th>
+                                            <th class="p-2.5 border border-slate-200">Arah Reaksi</th>
+                                            <th class="p-2.5 border border-slate-200">Arti</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-slate-700">
+                                        <tr class="bg-emerald-50">
+                                            <td class="p-2.5 border border-slate-200 font-bold">$Q_c < K_c$</td>
+                                            <td class="p-2.5 border border-slate-200">→ Reaksi maju ke kanan</td>
+                                            <td class="p-2.5 border border-slate-200 text-xs">Konsentrasi produk belum cukup, sistem membentuk lebih banyak produk</td>
+                                        </tr>
+                                        <tr class="bg-rose-50">
+                                            <td class="p-2.5 border border-slate-200 font-bold">$Q_c > K_c$</td>
+                                            <td class="p-2.5 border border-slate-200">← Reaksi balik ke kiri</td>
+                                            <td class="p-2.5 border border-slate-200 text-xs">Terlalu banyak produk, sistem membentuk kembali reaktan</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <td class="p-2.5 border border-slate-200 font-bold">$Q_c = K_c$</td>
+                                            <td class="p-2.5 border border-slate-200">Sudah setimbang</td>
+                                            <td class="p-2.5 border border-slate-200 text-xs">Tidak ada pergeseran, laju maju = laju balik</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Latihan Qc -->
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p class="text-sm font-semibold text-slate-700 mb-2"><i class="fa-solid fa-pencil text-amber-600 mr-1"></i>Latihan $Q_c$:</p>
+                                <p class="text-sm text-slate-700 mb-3">Diketahui reaksi $N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)}$ memiliki $K_c = 0.50$ pada suhu tertentu. Pada suatu saat, diukur konsentrasi seketika: $[N_2] = 1.0$ M, $[H_2] = 1.0$ M, $[NH_3] = 2.0$ M. Tentukan:</p>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">a. Hitunglah nilai $Q_c$ pada kondisi seketika tersebut!</label>
+                                        <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none font-mono" rows="2" placeholder="Tuliskan perhitungan dan hasil Qc..."></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">b. Bandingkan $Q_c$ dengan $K_c$. Ke arah mana reaksi akan bergeser untuk mencapai kesetimbangan?</label>
+                                        <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <!-- LATIHAN SOAL PERHITUNGAN Kc & Kp -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-calculator text-emerald-600 mr-2"></i> Latihan Mandiri: Perhitungan $K_c$ & $K_p$</h3>
+                        <p class="text-sm text-slate-700 mb-4 bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                            Kerjakan kedua soal berikut secara mandiri. Tuliskan langkah-langkah perhitunganmu dengan jelas agar mudah ditelusuri.
+                        </p>
+
+                        <!-- Soal 1: Kc dengan PCl5 -->
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-4">
+                            <h4 class="font-bold text-slate-800 mb-2 text-sm"><i class="fa-solid fa-flask-vial text-blue-500 mr-1"></i> Soal 1 — Disosiasi $PCl_5$ (menghitung $K_c$)</h4>
+                            <p class="text-sm text-slate-700 mb-3">Dalam wadah tertutup bervolume <strong>1.0 L</strong> pada suhu tertentu, sebanyak <strong>1.0 mol</strong> gas $PCl_5$ dipanaskan hingga terurai menurut persamaan:</p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-center font-mono text-sm border border-slate-200 mb-3 math-line">
+                                $PCl_{5(g)} \rightleftharpoons PCl_{3(g)} + Cl_{2(g)}$
+                            </div>
+                            <p class="text-sm text-slate-700 mb-3">Pada keadaan setimbang, tercatat sebanyak <strong>0.6 mol</strong> $PCl_5$ telah terurai. Hitunglah:</p>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">a. Konsentrasi masing-masing zat ($PCl_5$, $PCl_3$, $Cl_2$) pada saat setimbang!</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Tuliskan jawabanmu..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">b. Nilai $K_c$ pada suhu tersebut!</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Tuliskan perhitungan dan hasil Kc..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Soal 2: Kp dengan Haber-Bosch -->
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-4">
+                            <h4 class="font-bold text-slate-800 mb-2 text-sm"><i class="fa-solid fa-industry text-orange-500 mr-1"></i> Soal 2 — Sintesis Amonia (menghitung $K_p$)</h4>
+                            <p class="text-sm text-slate-700 mb-3">Pada reaksi sintesis amonia <span class="font-mono">$N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)}$</span> di pabrik, pada suhu <strong>400°C</strong>, tekanan parsial gas saat setimbang diukur:</p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-center text-sm border border-slate-200 mb-3 math-line">
+                                $P_{N_2} = 0.20$ atm &nbsp; ; &nbsp; $P_{H_2} = 0.60$ atm &nbsp; ; &nbsp; $P_{NH_3} = 0.40$ atm
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">a. Tuliskan rumus $K_p$ untuk reaksi ini!</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none font-mono" rows="2" placeholder="Contoh format: Kp = ..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">b. Hitunglah nilai $K_p$ pada suhu 400°C!</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Tuliskan perhitungan dan hasil Kp..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">c. Apakah nilai $K_p$ ini menunjukkan reaksi yang menghasilkan amonia dengan baik? Mengapa? (Petunjuk: bandingkan dengan $K_p$ reaksi yang sudah optimal)</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -456,33 +665,56 @@
                         <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-gamepad text-indigo-500 mr-2"></i> Simulator Interaktif "Geser Kesetimbangan"</h3>
                     </div>
 
-                    <!-- Percobaan Virtual 1: Perubahan Konsentrasi -->
+                    <!-- Percobaan Virtual 1: Perubahan Konsentrasi (reaksi Fe³⁺ + SCN⁻ ⇌ FeSCN²⁺) -->
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 shadow-sm">
-                        <h4 class="font-bold text-blue-900 mb-4 text-lg">Percobaan Virtual 1: Perubahan Konsentrasi</h4>
+                        <h4 class="font-bold text-blue-900 mb-2 text-lg">Percobaan Virtual 1: Perubahan Konsentrasi</h4>
+                        <p class="text-sm text-slate-700 mb-3">Reaksi klasik yang sering dipakai di laboratorium untuk mengamati pergeseran kesetimbangan akibat perubahan konsentrasi adalah reaksi ion besi(III) dengan tioisianat:</p>
+                        <div class="bg-white border border-slate-200 p-4 rounded-lg text-center font-mono text-sm shadow-inner mb-4 overflow-x-auto math-line">
+                            $Fe^{3+}_{(aq)} + SCN^{-}_{(aq)} \rightleftharpoons FeSCN^{2+}_{(aq)}$
+                            <div class="font-sans text-xs text-slate-500 italic mt-2">
+                                [kuning pucat] &nbsp; + &nbsp; [tidak berwarna] &nbsp; ⇌ &nbsp; [merah darah]
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900">
+                            <strong><i class="fa-solid fa-lightbulb mr-1"></i>Kunci Konsep:</strong> Warna merah pekat menunjukkan banyaknya ion $FeSCN^{2+}$ (produk). Saat kita menambah salah satu reaktan, sistem akan bereaksi dengan membentuk lebih banyak produk — warna merah akan menggelap.
+                        </div>
+
                         <div class="flex flex-col md:flex-row gap-8 items-center justify-center mb-6 bg-white p-6 rounded-xl border border-blue-100 no-print">
                             <!-- Visual -->
                             <div class="flex flex-col items-center">
                                 <div class="w-16 h-36 border-4 border-slate-300 border-t-0 rounded-b-3xl relative overflow-hidden bg-slate-50 shadow-inner">
-                                    <!-- Liquid -->
-                                    <div id="tabungKonsentrasi" class="absolute bottom-0 w-full h-3/4 bg-blue-300 transition-colors duration-1000"></div>
-                                    <!-- Endapan -->
-                                    <div class="absolute bottom-0 w-full h-5 bg-white/90 rounded-b-2xl border-t border-slate-200"></div>
+                                    <!-- Liquid (warna merah FeSCN²⁺) -->
+                                    <div id="tabungKonsentrasi" class="absolute bottom-0 w-full h-3/4 bg-rose-300 transition-colors duration-1000"></div>
                                     <div class="absolute inset-0 bg-gradient-to-r from-white/40 to-transparent pointer-events-none w-1/3"></div>
                                 </div>
                                 <span class="text-xs font-semibold text-slate-500 mt-2">Tabung Reaksi</span>
                             </div>
                             <!-- Kontrol -->
                             <div class="flex flex-col items-center gap-3 w-full max-w-xs text-center">
-                                <p class="text-sm text-slate-600 mb-2">Larutan awal: Biru cerah + Endapan putih.</p>
-                                <button onclick="tambahReaktan()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold shadow-sm transition active:scale-95 text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-flask"></i> Tambahkan Reaktan (Pereaksi)</button>
+                                <p class="text-sm text-slate-600 mb-2">Larutan awal: <span class="font-semibold text-rose-500">merah pucat</span> (kesetimbangan awal).</p>
+                                <button onclick="tambahReaktan()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold shadow-sm transition active:scale-95 text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-flask"></i> Tambahkan $SCN^{-}$ (reaktan)</button>
                                 <button onclick="resetKonsentrasi()" class="text-sm text-slate-500 hover:text-slate-700 underline"><i class="fa-solid fa-rotate-left mr-1"></i>Reset Simulasi</button>
-                                <p id="statusKonsentrasi" class="text-sm font-semibold text-blue-800 mt-2 opacity-0 transition-opacity duration-500 bg-blue-100 p-2 rounded-lg w-full">Visual: Warna larutan menjadi lebih pekat.</p>
+                                <p id="statusKonsentrasi" class="text-sm font-semibold text-blue-800 mt-2 opacity-0 transition-opacity duration-500 bg-blue-100 p-2 rounded-lg w-full">Visual: Larutan menjadi merah pekat — sistem bergeser ke kanan.</p>
                             </div>
                         </div>
                         
                         <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm mt-4">
-                            <label class="block text-sm font-semibold text-slate-700 mb-2"><i class="fa-solid fa-pen-nib text-blue-500 mr-2"></i>Ke arah mana (kiri/reaktan atau kanan/produk) kesetimbangan bergeser? Mengapa?</label>
-                            <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2"><i class="fa-solid fa-pen-nib text-blue-500 mr-2"></i>Pertanyaan Inkuiri:</label>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">a. Ke arah mana (kiri/reaktan atau kanan/produk) kesetimbangan bergeser saat $SCN^{-}$ ditambahkan? Mengapa?</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">b. Jika yang ditambahkan adalah ion $Fe^{3+}$ (bukan $SCN^{-}$), apakah warna larutan juga akan menggelap? Jelaskan!</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">c. Bagaimana cara kamu mengurangi konsentrasi $Fe^{3+}$ tanpa menambah zat baru? (Petunjuk: pikirkan zat yang bisa mengikat $Fe^{3+}$, mis. $PO_4^{3-}$)</label>
+                                    <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -490,8 +722,19 @@
                     <div class="bg-orange-50 border border-orange-200 rounded-xl p-5 shadow-sm">
                         <h4 class="font-bold text-orange-900 mb-2 text-lg">Percobaan Virtual 2: Perubahan Suhu</h4>
                         <p class="text-sm text-slate-700 mb-3">Perhatikan reaksi endoterm berikut:</p>
-                        <div class="bg-white border border-slate-200 p-4 rounded-lg text-center font-mono text-sm shadow-inner mb-6 overflow-x-auto">
-                            $N_2O_{4(g)}$ <br><span class="text-slate-400 font-sans text-xs italic">[cair, tidak berwarna]</span> <br><br> $\rightleftharpoons$ <br><br> $2NO_{2(g)}$ <br><span class="text-orange-800 font-sans text-xs italic">[gas, cokelat]</span> <br><br> $\Delta H > 0$
+                        <div class="bg-white border border-slate-200 p-4 rounded-lg text-center font-mono text-sm shadow-inner mb-4 overflow-x-auto math-line">
+                            $N_2O_{4(g)} \rightleftharpoons 2NO_{2(g)} \quad \Delta H > 0$
+                        </div>
+                        <!-- Anotasi warna per komponen -->
+                        <div class="flex flex-col md:flex-row justify-center gap-2 md:gap-6 mb-6 text-xs">
+                            <span class="bg-slate-100 px-3 py-1.5 rounded-full border border-slate-300">
+                                <span class="font-mono font-bold text-slate-700">$N_2O_4$</span>
+                                <span class="text-slate-500 italic ml-1">— tidak berwarna</span>
+                            </span>
+                            <span class="bg-orange-100 px-3 py-1.5 rounded-full border border-orange-300">
+                                <span class="font-mono font-bold text-orange-800">$NO_2$</span>
+                                <span class="text-orange-700 italic ml-1">— gas, cokelat</span>
+                            </span>
                         </div>
 
                         <div class="flex flex-col md:flex-row gap-8 items-center justify-center mb-6 bg-white p-6 rounded-xl border border-orange-100 no-print">
@@ -544,6 +787,140 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Percobaan Virtual 3: Perubahan Tekanan -->
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 shadow-sm">
+                        <h4 class="font-bold text-emerald-900 mb-2 text-lg">Percobaan Virtual 3: Perubahan Tekanan</h4>
+                        <p class="text-sm text-slate-700 mb-3">Perhatikan kembali reaksi dinitrogen tetroksida. Kali ini kita akan mengamati efek <strong>perubahan tekanan</strong> pada sistem kesetimbangan gas (1 mol reaktan $\rightleftharpoons$ 2 mol produk):</p>
+                        <div class="bg-white border border-slate-200 p-4 rounded-lg text-center font-mono text-sm shadow-inner mb-4 overflow-x-auto math-line">
+                            $N_2O_{4(g)} \rightleftharpoons 2NO_{2(g)}$ <br>
+                            <span class="text-slate-500 font-sans text-xs italic mt-1 inline-block">[tidak berwarna] &nbsp; ⇌ &nbsp; [cokelat]</span>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900">
+                            <strong><i class="fa-solid fa-circle-info mr-1"></i>Kunci Konsep:</strong> Pada sistem gas, penambahan tekanan (kompresi volume) akan menggeser kesetimbangan ke sisi dengan <strong>jumlah mol gas lebih sedikit</strong>. Sebaliknya, penurunan tekanan (ekspansi volume) menggeser ke sisi dengan <strong>jumlah mol gas lebih banyak</strong>.
+                        </div>
+
+                        <div class="flex flex-col md:flex-row gap-8 items-center justify-center mb-6 bg-white p-6 rounded-xl border border-emerald-100 no-print">
+                            <!-- Visual Silinder Gas (Piston) -->
+                            <div class="flex flex-col items-center">
+                                <div class="relative w-28 h-44 border-4 border-slate-400 rounded-b-xl rounded-t-md overflow-hidden bg-slate-50 shadow-inner">
+                                    <!-- Skala -->
+                                    <div class="absolute left-1 top-2 bottom-2 w-px bg-slate-300"></div>
+                                    <div class="absolute left-1 top-2 w-2 h-px bg-slate-300"></div>
+                                    <div class="absolute left-1 top-1/2 w-2 h-px bg-slate-300"></div>
+                                    <div class="absolute left-1 bottom-2 w-2 h-px bg-slate-300"></div>
+                                    <!-- Gas volume (warna & tinggi berubah) -->
+                                    <div id="gasTekanan" class="absolute bottom-0 left-0 right-0 bg-amber-700 transition-all duration-700 ease-out" style="height: 60%; opacity: 0.55;"></div>
+                                    <!-- Piston plunger (penekan) -->
+                                    <div id="pistonPlunger" class="absolute left-0 right-0 h-4 bg-slate-700 border-y-2 border-slate-900 shadow-md transition-all duration-700 ease-out" style="top: 40%;">
+                                        <div class="absolute -right-2 top-1/2 -translate-y-1/2 w-3 h-2 bg-slate-700 rounded-r"></div>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-semibold text-slate-500 mt-2">Silinder Gas (Piston)</span>
+                                <span id="volumeLabel" class="text-xs text-slate-400 mt-0.5">Volume: 1.0 L</span>
+                            </div>
+                            
+                            <!-- Slider Kontrol -->
+                            <div class="w-full max-w-xs flex flex-col items-center bg-emerald-50 p-5 rounded-xl border border-emerald-200">
+                                <label class="text-sm font-bold text-slate-800 mb-4"><i class="fa-solid fa-gauge-high text-emerald-600 mr-2"></i>Geser Slider Tekanan:</label>
+                                <input type="range" id="sliderTekanan" min="0" max="100" value="50" oninput="ubahTekanan(this.value)" class="w-full accent-emerald-600 cursor-pointer">
+                                <div class="w-full flex justify-between text-xs font-bold text-slate-600 mt-3">
+                                    <span class="text-cyan-600"><i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>Rendah (Volume Besar)</span>
+                                    <span class="text-red-600">Tinggi (Terjerap)<i class="fa-solid fa-compress ml-1"></i></span>
+                                </div>
+                                <div id="statusTekanan" class="text-xs font-semibold text-slate-700 mt-4 text-center h-12 flex items-center justify-center px-2 bg-emerald-50 rounded">Visual: Tekanan Normal — gas cokelat sedang.</div>
+                            </div>
+                        </div>
+
+                        <!-- Pertanyaan Inkuiri Percobaan 3 -->
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mt-4 space-y-6">
+                            <h5 class="font-bold text-slate-800 border-b pb-2"><i class="fa-solid fa-clipboard-question text-chem-500 mr-2"></i> Pertanyaan Inkuiri</h5>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">1. Saat tekanan dinaikkan (piston didorong masuk), warna gas berubah menjadi semakin <em>tidak berwarna</em>. Jelaskan dengan asas Le Chatelier, ke arah mana kesetimbangan bergeser!</label>
+                                <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Jawabanmu..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">2. Pada reaksi <span class="font-mono">$N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)}$</span> (Haber-Bosch), jika tekanan diperbesar, ke arah mana kesetimbangan bergeser? Mengapa?</label>
+                                <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">3. Mengapa perubahan tekanan hanya memengaruhi kesetimbangan yang melibatkan <strong>gas</strong>, dan tidak berlaku untuk sistem yang hanya melibatkan zat padat/cair murni?</label>
+                                <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Jawabanmu..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Percobaan Virtual 4: Konsep Katalis (Khusus Penjelasan) -->
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-5 shadow-sm">
+                        <h4 class="font-bold text-purple-900 mb-2 text-lg"><i class="fa-solid fa-atom text-purple-600 mr-2"></i> Konsep Katalis & Posisi Kesetimbangan</h4>
+                        <p class="text-sm text-slate-700 mb-4">Banyak siswa keliru mengira bahwa <strong>katalis akan menggeser posisi kesetimbangan</strong> ke arah produk. Padahal, asas Le Chatelier tidak memasukkan katalis sebagai faktor penggeser. Mari kita pahami mengapa.</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <!-- Kartu 1: Apa yang katalis lakukan -->
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h5 class="font-bold text-slate-800 mb-2 text-sm border-b pb-1"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Yang Katalis Lakukan</h5>
+                                <ul class="list-disc pl-4 text-xs text-slate-700 space-y-1.5">
+                                    <li>Menurunkan <strong>energi aktivasi</strong> ($E_a$) reaksi.</li>
+                                    <li>Mempercepat <strong>sama besar</strong> laju reaksi maju ($v_{maju}$) dan laju reaksi balik ($v_{balik}$).</li>
+                                    <li>Mempercepat tercapainya keadaan setimbang (waktu lebih singkat).</li>
+                                    <li>Berpartisipasi dalam mekanisme reaksi, tapi <strong>teregenerasi</strong> di akhir (tidak terpakai).</li>
+                                </ul>
+                            </div>
+                            <!-- Kartu 2: Apa yang TIDAK katalis lakukan -->
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h5 class="font-bold text-slate-800 mb-2 text-sm border-b pb-1"><i class="fa-solid fa-circle-xmark text-rose-500 mr-1"></i>Yang Katalis TIDAK Lakukan</h5>
+                                <ul class="list-disc pl-4 text-xs text-slate-700 space-y-1.5">
+                                    <li><strong>Tidak mengubah</strong> nilai $K_c$ atau $K_p$ (tetapan tetap pada suhu tertentu).</li>
+                                    <li><strong>Tidak menggeser</strong> posisi kesetimbangan.</li>
+                                    <li><strong>Tidak mengubah</strong> $\Delta H$ reaksi (entalpi tetap).</li>
+                                    <li><strong>Tidak mengubah</strong> energi dalam produk/reaktan (hanya jalan menuju sana yang dipersingkat).</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Diagram konseptual -->
+                        <div class="bg-white p-4 rounded-lg border border-slate-200 mb-4">
+                            <h5 class="font-bold text-slate-800 mb-2 text-sm"><i class="fa-solid fa-diagram-project mr-1"></i>Diagram Energi Reaksi Berkat Katalis</h5>
+                            <div class="text-center text-xs text-slate-600 mb-2 math-line">
+                                $E_a$ turun, namun $\Delta H$ (selisih energi produk-reaktan) tetap sama.
+                            </div>
+                            <svg viewBox="0 0 400 180" class="w-full h-auto max-w-sm mx-auto" style="max-height: 180px;" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="40" y1="160" x2="380" y2="160" stroke="#475569" stroke-width="1.5"/>
+                                <line x1="40" y1="20" x2="40" y2="160" stroke="#475569" stroke-width="1.5"/>
+                                <text x="380" y="175" font-size="10" fill="#475569" text-anchor="end">Koordinat Reaksi →</text>
+                                <text x="35" y="18" font-size="10" fill="#475569" text-anchor="end" transform="rotate(-90 35 18)">Energi</text>
+                                <line x1="60" y1="110" x2="100" y2="110" stroke="#0d9488" stroke-width="2.5"/>
+                                <text x="80" y="125" font-size="9" fill="#0d9488" text-anchor="middle">Reaktan</text>
+                                <line x1="320" y1="135" x2="360" y2="135" stroke="#14b8a6" stroke-width="2.5"/>
+                                <text x="340" y="150" font-size="9" fill="#14b8a6" text-anchor="middle">Produk</text>
+                                <path d="M 100 110 Q 230 20 320 135" stroke="#dc2626" stroke-width="2" fill="none" stroke-dasharray="4,2"/>
+                                <text x="240" y="32" font-size="9" fill="#dc2626" text-anchor="middle">Tanpa Katalis (Ea tinggi)</text>
+                                <path d="M 100 110 Q 230 70 320 135" stroke="#7c3aed" stroke-width="2.5" fill="none"/>
+                                <text x="240" y="68" font-size="9" fill="#7c3aed" text-anchor="middle">Dengan Katalis (Ea turun)</text>
+                                <line x1="80" y1="110" x2="80" y2="135" stroke="#0891b2" stroke-width="1"/>
+                                <text x="55" y="125" font-size="9" fill="#0891b2" text-anchor="end">ΔH</text>
+                            </svg>
+                        </div>
+
+                        <!-- Pertanyaan inkuiri katalis -->
+                        <div class="bg-white p-5 rounded-lg border border-slate-200 mt-3">
+                            <h5 class="font-bold text-slate-800 mb-3 text-sm border-b pb-1"><i class="fa-solid fa-clipboard-question text-chem-500 mr-1"></i> Pertanyaan Inkuiri</h5>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-2">1. Jika katalis tidak menggeser kesetimbangan, mengapa industri Haber-Bosch tetap menggunakan katalis serbuk besi ($Fe + Al_2O_3$)?</label>
+                                    <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-2">2. Apakah nilai $K_c$ reaksi akan berubah jika katalis ditambahkan? Jelaskan alasannya!</label>
+                                    <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Jawabanmu..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 
                     <div class="mt-6 flex justify-end no-print">
                         <button onclick="switchTab('tab-aplikasi')" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-md transition active:scale-95 text-sm flex items-center gap-2">
@@ -570,8 +947,14 @@
                         </div>
 
                         <!-- Reaksi Info -->
-                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center font-mono text-sm shadow-inner mb-6">
+                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center font-mono text-sm shadow-inner mb-4 math-line">
                             $N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)} \quad \Delta H = -92 \text{ kJ (Eksoterm)}$
+                        </div>
+
+                        <!-- Konteks Green Ammonia -->
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 text-sm text-slate-700">
+                            <h4 class="font-bold text-emerald-800 mb-1 text-sm"><i class="fa-solid fa-leaf mr-1"></i> Konteks Keberlanjutan: "Green Ammonia"</h4>
+                            <p>Proses Haber-Bosch konvensional sangat boros energi — bertanggung jawab atas <strong>1-2% emisi $CO_2$ global</strong> karena memakai hidrogen dari bahan bakar fosil (gas alam). Saat ini peneliti mengembangkan <strong>green ammonia</strong>: hidrogen diperoleh dari elektrolisis air menggunakan energi terbarukan (surya/angin), sehingga jejak karbon pabrik pupuk bisa turun drastis. Tantangan masa depan: bagaimana membuat proses ini tetap ekonomis?</p>
                         </div>
 
                         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-slate-700">
@@ -689,6 +1072,99 @@
                         </div>
                     </div>
 
+                    <!-- Efek Gas Inert (Konsep HOTS) -->
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="text-lg font-bold text-rose-900 mb-2"><i class="fa-solid fa-fire-extinguisher text-rose-500 mr-2"></i> Konsep HOTS: Efek Gas Inert pada Kesetimbangan</h3>
+                        <p class="text-sm text-slate-700 mb-3">Gas inert (seperti $He$, $Ne$, $Ar$) tidak ikut bereaksi dalam kesetimbangan. Tapi penambahannya bisa memengaruhi sistem — tergantung <strong>kondisi wadahnya</strong>:</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h5 class="font-bold text-slate-800 mb-2 text-sm border-b pb-1">A. Volume Konstan (Wadah Tertutup Kaku)</h5>
+                                <p class="text-xs text-slate-700 mb-2">Jika gas inert ditambah ke wadah yang <strong>volume-nya tidak bisa berubah</strong>:</p>
+                                <ul class="list-disc pl-4 text-xs text-slate-700 space-y-1">
+                                    <li>Tekanan total naik, tapi <strong>tekanan parsial</strong> masing-masing gas reaktan/produk tetap sama (konsentrasi tidak berubah).</li>
+                                    <li><strong>Kesetimbangan tidak bergeser.</strong></li>
+                                </ul>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h5 class="font-bold text-slate-800 mb-2 text-sm border-b pb-1">B. Tekanan Konstan (Wadah dengan Piston)</h5>
+                                <p class="text-xs text-slate-700 mb-2">Jika gas inert ditambah ke wadah yang <strong>tekanannya dijaga konstan</strong> (piston bisa bergerak):</p>
+                                <ul class="list-disc pl-4 text-xs text-slate-700 space-y-1">
+                                    <li>Piston terdorong keluar, <strong>volume total membesar</strong>.</li>
+                                    <li>Konsentrasi reaktan & produk menurun, efeknya sama seperti kompresi terbalik.</li>
+                                    <li>Kesetimbangan bergeser ke sisi dengan <strong>mol gas lebih banyak</strong>.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 rounded-lg border border-slate-200 mt-3">
+                            <label class="block text-xs font-semibold text-slate-700 mb-2"><i class="fa-solid fa-clipboard-question text-chem-500 mr-1"></i> Coba pikirkan:</label>
+                            <p class="text-sm text-slate-700 mb-2">Pada reaksi $N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)}$ di wadah tertutup kaku (volume konstan), ditambahkan gas argon ($Ar$). Apakah produksi amonia ($NH_3$) bertambah, berkurang, atau tetap? Mengapa?</p>
+                            <textarea class="w-full p-2.5 border border-slate-300 rounded text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Jawabanmu..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Glosarium / Ringkasan Konsep -->
+                    <div class="bg-chem-50 border border-chem-200 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-xl font-bold text-chem-900 mb-4"><i class="fa-solid fa-book mr-2"></i> Glosarium & Ringkasan Konsep</h3>
+                        <p class="text-sm text-slate-700 mb-4">Sebelum melanjutkan ke evaluasi, pastikan kamu menguasai istilah dan konsep kunci berikut:</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Reaksi Reversibel</h4>
+                                <p class="text-xs text-slate-600">Reaksi yang dapat berlangsung dua arah (maju & balik), ditandai dengan tanda $\rightleftharpoons$.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Kesetimbangan Dinamis</h4>
+                                <p class="text-xs text-slate-600">Keadaan saat $v_{maju} = v_{balik}$, konsentrasi zat-zat tetap, tapi reaksi tidak berhenti.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Tetapan $K_c$</h4>
+                                <p class="text-xs text-slate-600">Tetapan kesetimbangan berbasis konsentrasi molar. Berlaku untuk gas & larutan.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Tetapan $K_p$</h4>
+                                <p class="text-xs text-slate-600">Tetapan kesetimbangan berbasis tekanan parsial. Hanya untuk gas.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">$Q_c$ (Reaction Quotient)</h4>
+                                <p class="text-xs text-slate-600">Nilai hasil bagi pada kondisi <em>seketika</em> (belum tentu setimbang). $Q_c < K_c$ → geser kanan, $Q_c > K_c$ → geser kiri.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Tabel MRS</h4>
+                                <p class="text-xs text-slate-600">Mula-mula, Reaksi, Setimbang — metode untuk menghitung konsentrasi setimbang.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Asas Le Chatelier</h4>
+                                <p class="text-xs text-slate-600">Jika sistem setimbang diganggu, sistem akan bergeser untuk mengurangi pengaruh gangguan tersebut.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">Katalis</h4>
+                                <p class="text-xs text-slate-600">Zat yang mempercepat tercapainya setimbang dengan menurunkan $E_a$, tanpa mengubah $K_c$ atau posisi kesetimbangan.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">$\Delta n$</h4>
+                                <p class="text-xs text-slate-600">Selisih total koefisien mol gas produk dengan reaktan. Dipakai di hubungan $K_p = K_c(RT)^{\Delta n}$.</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-chem-700 text-sm">$\Delta H$ (Entalpi)</h4>
+                                <p class="text-xs text-slate-600">Perubahan panas reaksi. $\Delta H > 0$ endoterm, $\Delta H < 0$ eksoterm.</p>
+                            </div>
+                        </div>
+
+                        <!-- Ringkasan 5 poin -->
+                        <div class="bg-white p-4 rounded-lg border border-slate-200">
+                            <h4 class="font-bold text-slate-800 mb-2 text-sm"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i>Ringkasan 5 Poin Utama:</h4>
+                            <ol class="list-decimal pl-5 text-xs text-slate-700 space-y-1.5">
+                                <li>Kesetimbangan dinamis berarti <strong>reaksi tetap berjalan</strong>, hanya saja laju maju = laju balik sehingga konsentrasi stabil.</li>
+                                <li>$K_c$ & $K_p$ hanya bergantung pada <strong>suhu</strong>. Perubahan konsentrasi, tekanan, atau katalis tidak mengubah nilai $K$.</li>
+                                <li>Penambahan konsentrasi reaktan → geser ke kanan; penambahan produk → geser ke kiri.</li>
+                                <li>Kenaikan suhu: geser ke arah <strong>endoterm</strong>; penurunan suhu: geser ke arah <strong>eksoterm</strong>.</li>
+                                <li>Tekanan naik → geser ke sisi dengan <strong>mol gas lebih sedikit</strong>; katalis → <strong>tidak geser</strong>, hanya mempercepat.</li>
+                            </ol>
+                        </div>
+                    </div>
+
                     <div class="mt-6 flex justify-end no-print">
                         <button onclick="switchTab('tab-evaluasi')" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-md transition active:scale-95 text-sm flex items-center gap-2">
                             Simpan & Lanjut ke Evaluasi <i class="fa-solid fa-arrow-right"></i>
@@ -702,9 +1178,12 @@
         <!-- ================= TAB 5: EVALUASI ================= -->
         <section id="tab-evaluasi" class="tab-content">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden max-w-4xl mx-auto">
-                <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <h2 class="text-2xl font-bold text-slate-800"><i class="fa-solid fa-pen-to-square text-chem-500 mr-2"></i> Uji Pemahaman</h2>
-                    <span class="text-sm font-semibold bg-chem-100 text-chem-800 px-3 py-1 rounded-full shadow-inner border border-chem-200">Skor: <span id="scoreDisplay">0</span>/100</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="submitStatus" class="hidden text-xs font-semibold px-3 py-1 rounded-full border"></span>
+                        <span class="text-sm font-semibold bg-chem-100 text-chem-800 px-3 py-1 rounded-full shadow-inner border border-chem-200">Skor: <span id="scoreDisplay">0 / 100</span></span>
+                    </div>
                 </div>
                 <div class="p-6 md:p-8 space-y-8" id="quizContainer">
                     
@@ -784,6 +1263,108 @@
                         </div>
                     </div>
 
+                    <!-- Soal 5 (PG Baru - Tekanan) -->
+                    <div class="quiz-item" id="q5">
+                        <p class="font-semibold text-slate-800 mb-3">5. Pada reaksi $N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)}$, jika tekanan pada sistem diperbesar, kesetimbangan akan bergeser ke...</p>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal5" value="A" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Kiri (ke arah reaktan), karena jumlah mol gas lebih banyak (4 mol).</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal5" value="B" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Kanan (ke arah produk), karena jumlah mol gas lebih sedikit (2 mol) sehingga mengurangi tekanan.</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal5" value="C" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Tidak bergeser, karena tekanan tidak memengaruhi kesetimbangan gas.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Soal 6 (PG Baru - Katalis) -->
+                    <div class="quiz-item" id="q6">
+                        <p class="font-semibold text-slate-800 mb-3">6. Penambahan katalis pada sistem kesetimbangan akan menyebabkan...</p>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal6" value="A" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Nilai $K_c$ bertambah besar, produk lebih banyak.</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal6" value="B" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Posisi kesetimbangan bergeser ke kanan (ke arah produk).</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal6" value="C" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Laju maju dan laju balik sama-sama naik, $K_c$ tetap, hanya waktu tercapainya setimbang yang lebih cepat.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Soal 7 (PG Baru - Qc) -->
+                    <div class="quiz-item" id="q7">
+                        <p class="font-semibold text-slate-800 mb-3">7. Diketahui suatu reaksi memiliki $K_c = 4.0$ pada suhu tertentu. Jika pada suatu saat diukur $Q_c = 1.0$, maka reaksi akan...</p>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal7" value="A" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Bergeser ke kanan (membentuk produk) karena $Q_c < K_c$.</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal7" value="B" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Bergeser ke kiri (membentuk reaktan) karena $Q_c < K_c$.</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="radio" name="soal7" value="C" class="w-4 h-4 text-chem-600">
+                                <span class="text-sm text-slate-700">Sudah setimbang karena nilai $Q_c$ dan $K_c$ sudah dekat.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- BLOK PETUNJUK FORMAT ESSAY -->
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5 shadow-sm mb-2">
+                        <h4 class="font-bold text-indigo-900 mb-2 text-sm"><i class="fa-solid fa-keyboard text-indigo-600 mr-1"></i> Petunjuk Menulis Rumus di Kolom Jawaban Essay</h4>
+                        <p class="text-xs text-slate-700 mb-3">Kamu boleh menulis rumus dengan <strong>dua gaya</strong> — keduanya akan diterima oleh sistem penilaian:</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <div class="bg-white p-3 rounded border border-slate-200">
+                                <p class="text-xs font-bold text-slate-800 mb-1">Gaya 1: MathJax (direkomendasikan)</p>
+                                <p class="text-xs text-slate-600 mb-1">Bungkus rumus dengan tanda <code class="bg-slate-100 px-1 rounded">$</code> di awal dan akhir:</p>
+                                <code class="text-[10px] block bg-slate-100 p-2 rounded mt-1">$K_c = \frac{[NH_3]^2}{[N_2][H_2]^3}$</code>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-slate-200">
+                                <p class="text-xs font-bold text-slate-800 mb-1">Gaya 2: Plain text (lebih simpel)</p>
+                                <p class="text-xs text-slate-600 mb-1">Pakai tanda <code class="bg-slate-100 px-1 rounded">^</code> untuk pangkat, <code class="bg-slate-100 px-1 rounded">*</code> untuk kali:</p>
+                                <code class="text-[10px] block bg-slate-100 p-2 rounded mt-1">Kc = [NH3]^2 / ([N2] * [H2]^3)</code>
+                            </div>
+                        </div>
+                        <div class="bg-amber-100 border border-amber-200 rounded p-2 text-xs text-amber-900">
+                            <strong><i class="fa-solid fa-lightbulb mr-1"></i>Tips penilaian:</strong> Sistem akan mengecek <strong>kata kunci</strong> (rumus, simbol kimia, nilai akhir) di jawabanmu. Tuliskan langkah perhitungan + hasil akhir dengan jelas agar dapat skor maksimal.
+                        </div>
+                    </div>
+
+                    <!-- Soal Essay 8 - Perhitungan Kc -->
+                    <div class="quiz-item" id="q8">
+                        <p class="font-semibold text-slate-800 mb-2">8. <span class="text-xs bg-chem-100 text-chem-800 px-2 py-0.5 rounded-full font-bold">Essay - 10 poin</span></p>
+                        <p class="text-sm text-slate-700 mb-3">Untuk reaksi $2SO_{2(g)} + O_{2(g)} \rightleftharpoons 2SO_{3(g)}$ pada suhu tertentu, diketahui konsentrasi setimbang: $[SO_2] = 0.10$ M, $[O_2] = 0.20$ M, $[SO_3] = 0.40$ M. Hitunglah nilai $K_c$ pada suhu tersebut. Tuliskan langkah perhitunganmu.</p>
+                        <div class="text-[11px] text-slate-500 mb-1 ml-1"><i class="fa-solid fa-tag mr-1"></i>Kata kunci yang dicek: rumus $K_c$ lengkap, subtitusi nilai, dan hasil akhir <strong>Kc ≈ 80</strong></div>
+                        <textarea id="soal8" class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none font-mono" rows="4" placeholder="Contoh: Kc = [SO3]^2 / ([SO2]^2 * [O2]) = (0.40)^2 / ((0.10)^2 * 0.20) = 0.16 / 0.002 = 80"></textarea>
+                    </div>
+
+                    <!-- Soal Essay 9 - Perhitungan Kp dengan Δn -->
+                    <div class="quiz-item" id="q9">
+                        <p class="font-semibold text-slate-800 mb-2">9. <span class="text-xs bg-chem-100 text-chem-800 px-2 py-0.5 rounded-full font-bold">Essay - 10 poin</span></p>
+                        <p class="text-sm text-slate-700 mb-3">Pada reaksi $N_{2(g)} + 3H_{2(g)} \rightleftharpoons 2NH_{3(g)}$, diketahui $K_c = 0.50$ pada suhu 400 K. Hitunglah nilai $K_p$ menggunakan hubungan $K_p = K_c(RT)^{\Delta n}$. (Konstanta gas $R = 0.0821$ L·atm/mol·K). Tuliskan langkah perhitunganmu.</p>
+                        <div class="text-[11px] text-slate-500 mb-1 ml-1"><i class="fa-solid fa-tag mr-1"></i>Kata kunci yang dicek: <strong>Δn = -2</strong>, subtitusi RT, dan hasil akhir <strong>Kp ≈ 4.6 × 10⁻⁴</strong></div>
+                        <textarea id="soal9" class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none font-mono" rows="4" placeholder="Contoh: Δn = 2 - (1+3) = -2. Kp = Kc*(RT)^Δn = 0.50*(0.0821*400)^-2 = 0.50*(32.84)^-2 = 0.50/1078.4 = 4.64e-4"></textarea>
+                    </div>
+
+                    <!-- Soal Essay 10 - Analisis Kasus -->
+                    <div class="quiz-item" id="q10">
+                        <p class="font-semibold text-slate-800 mb-2">10. <span class="text-xs bg-chem-100 text-chem-800 px-2 py-0.5 rounded-full font-bold">Essay Analisis - 10 poin</span></p>
+                        <p class="text-sm text-slate-700 mb-3">Seorang siswa melakukan eksperimen pada reaksi endoterm $PCl_{5(g)} \rightleftharpoons PCl_{3(g)} + Cl_{2(g)}$. Saat suhu dinaikkan, warna gas menjadi lebih kuning pekat. Saat volume tabung diperkecil (tekanan naik), warna memudar. Jelaskan dengan asas Le Chatelier mengapa kedua pengamatan tersebut terjadi, dan tentukan apa yang seharusnya dilakukan siswa jika ingin memaksimalkan jumlah produk $Cl_2$.</p>
+                        <div class="text-[11px] text-slate-500 mb-1 ml-1"><i class="fa-solid fa-tag mr-1"></i>Kata kunci yang dicek: <strong>endoterm</strong>, <strong>suhu naik → geser kanan</strong>, <strong>tekanan naik → geser kiri</strong> (sisi mol lebih sedikit), <strong>mol gas lebih sedikit</strong>, <strong>suhu tinggi &amp; tekanan rendah</strong> untuk maksimalkan $Cl_2$</div>
+                        <textarea id="soal10" class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="5" placeholder="Jawabanmu..."></textarea>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row gap-3 no-print">
                         <button onclick="cekJawaban()" class="flex-1 bg-chem-600 hover:bg-chem-700 text-white py-3 rounded-xl font-bold shadow-md transition active:scale-95 text-base">Kumpulkan Jawaban & Cek Skor</button>
                         <button onclick="switchTab('tab-refleksi')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-bold shadow-md transition active:scale-95 text-base flex justify-center items-center gap-2">Lanjut ke Refleksi <i class="fa-solid fa-arrow-right"></i></button>
@@ -800,7 +1381,7 @@
                 <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                     <h2 class="text-2xl font-bold text-slate-800"><i class="fa-solid fa-book-open-reader text-chem-500 mr-2"></i> REFLEKSI & PENUTUP</h2>
                     <!-- Tombol Panel Guru dipindah ke pojok atas tab Refleksi -->
-                    <button onclick="bukaPanelGuru()" class="text-xs text-slate-500 hover:text-slate-800 no-print" title="Hanya untuk Guru"><i class="fa-solid fa-lock mr-1"></i> Panel Guru</button>
+                    <button onclick="openSetupModal()" class="text-xs text-slate-500 hover:text-slate-800 no-print" title="Panduan setup auto-submit nilai"><i class="fa-solid fa-circle-question mr-1"></i> Panduan Setup Guru</button>
                 </div>
                 <div class="p-6 md:p-8 space-y-8">
                     
@@ -829,13 +1410,52 @@
                         </div>
                     </div>
 
+                    <!-- Refleksi Terbuka (Metakognisi) -->
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-6 shadow-sm">
+                        <h3 class="text-lg font-bold text-indigo-900 mb-3"><i class="fa-solid fa-brain mr-2"></i> Refleksi Mendalam (Metakognisi)</h3>
+                        <p class="text-sm text-slate-700 mb-4">Jawab pertanyaan reflektif berikut dengan jujur untuk membantumu memahami proses belajarmu sendiri:</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">1. Bagian konsep mana yang menurutmu paling <strong>mudah dipahami</strong>? Mengapa?</label>
+                                <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Contoh: Konsep Kc & Kp, karena rumusnya jelas..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">2. Bagian mana yang paling <strong>sulit dipahami</strong>? Apa yang membuatnya sulit?</label>
+                                <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="2" placeholder="Contoh: Hubungan Qc dengan arah reaksi, karena saya bingung kapan lebih/kurang..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">3. Berikan <strong>satu contoh kesetimbangan kimia</strong> yang kamu temui di rumah atau sekitarmu (selain yang sudah dibahas di LKPD ini)!</label>
+                                <textarea class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none" rows="3" placeholder="Contoh: pelarutan gula dalam teh, penguapan air di gelas, dll..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tantangan Rumah (Pengayaan) -->
                     <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm">
-                        <h3 class="text-lg font-bold text-amber-900 mb-3"><i class="fa-solid fa-house-chimney-user mr-2"></i> Tantangan Rumah (Pengayaan)</h3>
+                        <h3 class="text-lg font-bold text-amber-900 mb-2"><i class="fa-solid fa-house-chimney-user mr-2"></i> Tantangan Rumah (Pengayaan)</h3>
                         <p class="text-sm text-slate-700 mb-4">
-                            Cari 1 contoh aplikasi kesetimbangan kimia lain dalam kehidupan sehari-hari (misal: pelarutan $CO_2$ dalam minuman bersoda). Jelaskan bagaimana perubahan tekanan memengaruhi rasa atau gelembung pada minuman tersebut!
+                            Pilih <strong>satu</strong> dari tiga tantangan berikut untuk dikerjakan di rumah sebagai pengayaan. Tuliskan laporan singkat (1-2 paragraf) di kolom yang tersedia. Boleh dilengkapi foto/sketsa pendukung di buku catatan fisik.
                         </p>
-                        <textarea class="w-full p-4 border border-slate-300 rounded-xl text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none shadow-inner" rows="4" placeholder="Tuliskan analisis dan jawaban tantangan pengayaanmu di sini..."></textarea>
+
+                        <div class="space-y-3 mb-4">
+                            <div class="bg-white p-4 rounded-lg border border-slate-200 hover:border-amber-300 transition">
+                                <p class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-utensils mr-1"></i> Pilihan A — Eksplorasi Dapur</p>
+                                <p class="text-xs text-slate-700">Temukan <strong>2 contoh kesetimbangan kimia</strong> di dapur rumahmu (selain yang sudah dibahas di LKPD). Untuk tiap contoh, identifikasi: (1) reaktan & produk, (2) minimal 1 faktor (suhu/konsentrasi/tekanan) yang memengaruhi kesetimbangan, (3) bukti observasi yang kamu lihat.</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-slate-200 hover:border-amber-300 transition">
+                                <p class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-briefcase mr-1"></i> Pilihan B — Riset Profesi</p>
+                                <p class="text-xs text-slate-700">Riset <strong>1 profesi</strong> yang memanfaatkan konsep kesetimbangan kimia (mis. insinyur kimia, apoteker, ahli lingkungan, dokter, ilmuwan material). Jelaskan: (1) profesi apa, (2) contoh aplikasi kesetimbangan di pekerjaan mereka, (3) mengapa pemahaman kesetimbangan krusial untuk profesi itu.</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-slate-200 hover:border-amber-300 transition">
+                                <p class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-earth-asia mr-1"></i> Pilihan C — Isu Kontemporer</p>
+                                <p class="text-xs text-slate-700">Pilih <strong>1 isu terkini</strong> yang berkaitan dengan kesetimbangan kimia: pengasaman laut (ocean acidification), penangkapan karbon (carbon capture & storage), fermentasi makanan tradisional, atau pembuatan vaksin. Jelaskan bagaimana konsep kesetimbangan kimia membantu memahami atau menyelesaikan isu tersebut.</p>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-amber-800 mb-2 italic">Tuliskan pilihan (A/B/C) dan jawabanmu di kolom di bawah ini:</p>
+                        <textarea class="w-full p-4 border border-slate-300 rounded-xl text-sm bg-white focus:ring-1 focus:ring-chem-500 outline-none transition resize-none shadow-inner" rows="5" placeholder="Saya pilih [A/B/C]: ...
+
+[ Tuliskan analisis lengkapmu di sini — sebutkan reaktan/produk, faktor yang memengaruhi, dan kesimpulanmu ]"></textarea>
                     </div>
 
                     <!-- Tombol Cetak / PDF Baru -->
@@ -854,7 +1474,17 @@
     <footer class="bg-slate-800 text-slate-400 py-6 text-center text-sm no-print">
         <p>Dirancang untuk Kurikulum Merdeka Fase F - Kimia SMA</p>
         <p class="mt-1">Dibuat menggunakan HTML5, Tailwind CSS, & Vanilla JS  |  Made by - kimIero 🫰 </p>
+        <p class="mt-2">
+            <button onclick="resetProgress()" class="text-xs text-rose-400 hover:text-rose-300 underline">
+                <i class="fa-solid fa-trash-can mr-1"></i>Reset Progress Tersimpan
+            </button>
+        </p>
     </footer>
+
+    <!-- Toast notifikasi "Progress tersimpan" -->
+    <div id="saveToast" class="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-semibold opacity-0 translate-y-2 transition-all duration-300 pointer-events-none z-[200]">
+        <i class="fa-solid fa-cloud-arrow-up mr-1"></i>Progress tersimpan
+    </div>
 
     <!-- Pesan Modal Kustom (Pengganti Alert) -->
     <div id="customModal" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[100] hidden opacity-0 transition-opacity duration-300">
@@ -865,8 +1495,236 @@
         </div>
     </div>
 
+    <!-- Modal Panduan Setup Guru (Auto-Submit ke Google Spreadsheet) -->
+    <div id="setupModal" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3 border-b pb-2">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-gear text-chem-600 mr-2"></i>Panduan Setup Auto-Submit Nilai</h3>
+                <button onclick="closeSetupModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+            </div>
+            
+            <div class="text-sm text-slate-700 space-y-3">
+                <p>Fitur ini membuat <strong>skor siswa otomatis terkirim ke spreadsheet guru</strong> saat siswa klik "Kumpulkan Jawaban". Tidak perlu lagi Panel Guru atau copy-paste manual. Ikuti langkah-langkah berikut <strong>(sekali setup, dipakai untuk semua kelas)</strong>:</p>
+                
+                <ol class="list-decimal pl-5 space-y-3">
+                    <li>
+                        <strong>Buat Google Spreadsheet baru</strong><br>
+                        <span class="text-xs text-slate-600">Buka <a href="https://sheets.new" target="_blank" class="text-chem-600 underline font-semibold">https://sheets.new</a> di browser (login akun Google guru). Beri nama mis. <em>"Nilai LKPD Kesetimbangan Kimia"</em>.</span>
+                    </li>
+                    <li>
+                        <strong>Buka Apps Script Editor</strong><br>
+                        <span class="text-xs text-slate-600">Di spreadsheet: menu <kbd class="bg-slate-100 border px-1 rounded text-[10px]">Ekstensi → Apps Script</kbd>. Tab baru terbuka dengan editor kode.</span>
+                    </li>
+                    <li>
+                        <strong>Hapus kode default, paste kode berikut:</strong>
+                        <pre class="bg-slate-800 text-slate-100 p-3 rounded-lg text-[10px] overflow-x-auto mt-2 leading-relaxed"><code>function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // Buat header otomatis jika sheet masih kosong
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      'Timestamp','Nama','Kelas','No.Absen',
+      'Skor PG (max 70)','Skor Essay (max 30)','Skor Total (max 100)',
+      'Detail Essay'
+    ]);
+    // Format header tebal + background
+    sheet.getRange(1,1,1,8).setFontWeight('bold').setBackground('#0d9488').setFontColor('#ffffff');
+  }
+
+  const p = e.parameter;
+  sheet.appendRow([
+    p.waktu || new Date(),
+    p.nama || '',
+    p.kelas || '',
+    p.absen || '',
+    Number(p.skorPG) || 0,
+    Number(p.skorEssay) || 0,
+    Number(p.skorTotal) || 0,
+    p.detailEssay || ''
+  ]);
+
+  return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</code></pre>
+                    </li>
+                    <li>
+                        <strong>Simpan & Deploy sebagai Web App</strong><br>
+                        <span class="text-xs text-slate-600">Klik ikon disket (Save). Lalu: <kbd class="bg-slate-100 border px-1 rounded text-[10px]">Deploy → New deployment</kbd> → klik roda gigi → pilih <strong>Web app</strong>. Set:</span>
+                        <ul class="list-disc pl-5 text-xs text-slate-600 mt-1 space-y-0.5">
+                            <li><strong>Execute as:</strong> Me (akun email guru)</li>
+                            <li><strong>Who has access:</strong> Anyone</li>
+                        </ul>
+                        <span class="text-xs text-slate-600">Klik <strong>Deploy</strong>. Authorize akses saat diminta (klik akun → Advanced → Go to project → Allow).</span>
+                    </li>
+                    <li>
+                        <strong>Copy Web App URL</strong><br>
+                        <span class="text-xs text-slate-600">Setelah deploy berhasil, akan muncul URL seperti:</span>
+                        <code class="block bg-slate-100 p-2 rounded text-[10px] mt-1 break-all">https://script.google.com/macros/s/AKfycbxxxx.../exec</code>
+                        <span class="text-xs text-slate-600">Klik tombol <strong>Copy URL</strong>.</span>
+                    </li>
+                    <li>
+                        <strong>Paste URL ke file HTML LKPD</strong><br>
+                        <span class="text-xs text-slate-600">Buka file <code>LKPD_Kesetimbangan_Kimia_FIXED.html</code> di text editor (Notepad++, VS Code, dll). Cari baris ini di bagian <code>&lt;script&gt;</code>:</span>
+                        <pre class="bg-slate-100 p-2 rounded text-[10px] mt-1"><code>const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTVUsSPvgz24xf2161GUrE-0x-zwzs_NVCeM-PT2ZseIwCJ1FT9hgaRydeDKXUlLNF/exec";  // <-- PASTE URL DI SINI</code></pre>
+                        <span class="text-xs text-slate-600">Paste URL Anda di antara tanda kutip ganda:</span>
+                        <pre class="bg-slate-100 p-2 rounded text-[10px] mt-1"><code>const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxxx.../exec";</code></pre>
+                        <span class="text-xs text-slate-600">Simpan file. Distribusi ke siswa.</span>
+                    </li>
+                    <li>
+                        <strong>Test</strong><br>
+                        <span class="text-xs text-slate-600">Buka LKPD di browser, isi identitas (Nama, Kelas, No. Absen), kerjakan 10 soal, klik "Kumpulkan Jawaban". Cek spreadsheet guru — seharusnya muncul baris baru berisi data + skor. Status di sebelah skor akan berubah jadi <strong>"✓ Terkirim"</strong>.</span>
+                    </li>
+                </ol>
+                
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900">
+                    <strong><i class="fa-solid fa-circle-check mr-1"></i>Saat auto-submit aktif, alurnya:</strong>
+                    <ol class="list-decimal pl-5 mt-1 space-y-0.5">
+                        <li>Siswa kerjakan LKPD di device sendiri</li>
+                        <li>Klik "Kumpulkan Jawaban" → skor otomatis terkirim ke spreadsheet guru</li>
+                        <li>Guru lihat spreadsheet — semua nilai siswa terkumpul otomatis dalam 1 sheet</li>
+                        <li>Siswa tetap bisa klik "Cetak PDF" untuk arsip pribadi</li>
+                    </ol>
+                </div>
+                
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+                    <strong><i class="fa-solid fa-lightbulb mr-1"></i>Catatan keamanan & penggunaan:</strong>
+                    <ul class="list-disc pl-5 mt-1 space-y-0.5">
+                        <li>URL Apps Script bersifat <strong>rahasia</strong> — siapa pun yang punya URL bisa submit data. Jangan publish ke forum publik. Distribusikan via file LKPD saja.</li>
+                        <li>Satu Apps Script bisa dipakai untuk <strong>semua kelas</strong>. Kolom <em>Kelas</em> & <em>No. Absen</em> sudah otomatis terisi, guru bisa filter/sort per kelas.</li>
+                        <li>Untuk kelas berbeda dengan sheet terpisah: buat Apps Script baru per sheet, atau modifikasi <code>doPost()</code> untuk route berdasarkan parameter <code>kelas</code>.</li>
+                        <li>Jika URL belum dikonfigurasi (masih kosong), auto-submit <strong>skip otomatis</strong>. Siswa tetap bisa kerjakan — guru tinggal review PDF siswa untuk nilai.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button onclick="closeSetupModal()" class="w-full bg-chem-600 text-white py-2 rounded-lg font-semibold hover:bg-chem-700 transition mt-4">Tutup</button>
+        </div>
+    </div>
+
     <!-- SCRIPT LOGIKA SIMULASI -->
     <script>
+        // === AUTO-SAVE PROGRESS KE LOCALSTORAGE ===
+        // Semua input/textarea/select otomatis disimpan saat diubah
+        // Saat halaman dibuka lagi, jawaban otomatis di-restore
+        const STORAGE_KEY = 'lkpd_kesetimbangan_progress';
+        let saveToastTimer = null;
+
+        function showSaveToast() {
+            const toast = document.getElementById('saveToast');
+            if (!toast) return;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            if (saveToastTimer) clearTimeout(saveToastTimer);
+            saveToastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 1500);
+        }
+
+        function saveProgress() {
+            try {
+                const data = {};
+                document.querySelectorAll('input[type="text"], input[type="number"], textarea, select').forEach(el => {
+                    // Skip input yang tidak punya id/name (tidak penting)
+                    const key = el.id || el.name;
+                    if (!key) return;
+                    // Untuk radio button, simpan yang checked saja
+                    if (el.type === 'radio') {
+                        if (el.checked) data['radio_' + el.name] = el.value;
+                        return;
+                    }
+                    // Untuk checkbox, simpan status checked
+                    if (el.type === 'checkbox') {
+                        const cbKey = 'cb_' + (el.id || el.name || ('cb_' + Math.random().toString(36).substr(2, 9)));
+                        data[cbKey] = el.checked;
+                        return;
+                    }
+                    // Untuk select, simpan value
+                    data[key] = el.value;
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                showSaveToast();
+            } catch (err) {
+                console.error('Save error:', err);
+            }
+        }
+
+        function restoreProgress() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return false;
+                const data = JSON.parse(raw);
+                let restoredCount = 0;
+                
+                document.querySelectorAll('input[type="text"], input[type="number"], textarea, select').forEach(el => {
+                    const key = el.id || el.name;
+                    if (!key) return;
+                    if (el.type === 'radio') {
+                        const radioKey = 'radio_' + el.name;
+                        if (data[radioKey] !== undefined && el.value === data[radioKey]) {
+                            el.checked = true;
+                            restoredCount++;
+                        }
+                        return;
+                    }
+                    if (el.type === 'checkbox') return; // checkbox ditangani terpisah
+                    if (data[key] !== undefined && data[key] !== '') {
+                        el.value = data[key];
+                        restoredCount++;
+                    }
+                });
+                
+                // Restore checkboxes
+                document.querySelectorAll('input[type="checkbox"]').forEach(el => {
+                    const cbKey = 'cb_' + (el.id || el.name);
+                    if (cbKey && data[cbKey] !== undefined) {
+                        el.checked = data[cbKey];
+                    }
+                });
+                
+                return restoredCount > 0;
+            } catch (err) {
+                console.error('Restore error:', err);
+                return false;
+            }
+        }
+
+        function resetProgress() {
+            if (!confirm('Yakin ingin menghapus SEMUA jawaban tersimpan? Tindakan ini tidak bisa dibatalkan.')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            // Reload halaman untuk bersihkan semua input
+            window.location.reload();
+        }
+
+        // Setup auto-save saat halaman load
+        window.addEventListener('DOMContentLoaded', () => {
+            const restored = restoreProgress();
+            if (restored) {
+                // Banner info: progress dipulihkan
+                const banner = document.createElement('div');
+                banner.className = 'fixed top-2 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-semibold z-[200] flex items-center gap-2';
+                banner.innerHTML = "<i class='fa-solid fa-check-circle'></i> Progress tersimpan sebelumnya telah dipulihkan. Kamu bisa lanjut bekerja.";
+                banner.style.transition = 'opacity 0.5s';
+                document.body.appendChild(banner);
+                setTimeout(() => {
+                    banner.style.opacity = '0';
+                    setTimeout(() => banner.remove(), 500);
+                }, 5000);
+            }
+            
+            // Pasang event listener untuk auto-save
+            document.addEventListener('input', (e) => {
+                if (e.target.matches('input, textarea, select')) {
+                    saveProgress();
+                }
+            });
+            document.addEventListener('change', (e) => {
+                if (e.target.matches('input[type="radio"], input[type="checkbox"], select')) {
+                    saveProgress();
+                }
+            });
+        });
+
         // === SISTEM NAVIGASI TABS ===
         function switchTab(tabId, btnContext) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -952,6 +1810,229 @@
             }
         }
 
+        // === KEGIATAN 1: KURVA KONSENTRASI INTERAKTIF (Canvas-based) ===
+        // Canvas lebih ramah html2canvas daripada SVG (tidak ada label terpotong)
+        let kurvaAnimTimer = null;
+        let kurvaProgress = 0;  // 0-100
+
+        function drawKurva(progress) {
+            // progress: 0 (awal) → 100 (setimbang penuh)
+            const canvas = document.getElementById('konsentrasiChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
+
+            // Layout
+            const padL = 70, padR = 20, padT = 20, padB = 50;
+            const plotW = W - padL - padR;
+            const plotH = H - padT - padB;
+            const yMax = 1.0;   // 1.0 M
+
+            // Grid + sumbu
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 5; i++) {
+                const y = padT + (plotH * i / 5);
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(W - padR, y);
+                ctx.stroke();
+            }
+
+            // Sumbu Y (kiri) + label
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(padL, padT);
+            ctx.lineTo(padL, H - padB);
+            ctx.stroke();
+            ctx.fillStyle = '#475569';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            const yLabels = ['1.0 M', '0.8 M', '0.6 M', '0.4 M', '0.2 M', '0.0 M'];
+            for (let i = 0; i <= 5; i++) {
+                const y = padT + (plotH * i / 5);
+                ctx.fillText(yLabels[i], padL - 8, y + 4);
+            }
+            // Label sumbu Y (rotasi)
+            ctx.save();
+            ctx.translate(15, padT + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.fillText('Konsentrasi (M)', 0, 0);
+            ctx.restore();
+
+            // Sumbu X + label
+            ctx.beginPath();
+            ctx.moveTo(padL, H - padB);
+            ctx.lineTo(W - padR, H - padB);
+            ctx.stroke();
+            ctx.textAlign = 'center';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillStyle = '#475569';
+            // Mark t = 0, t1, t2, t_setimbang
+            const xPositions = [
+                { x: padL, label: 't = 0' },
+                { x: padL + plotW * 0.3, label: 't₁' },
+                { x: padL + plotW * 0.6, label: 't₂' },
+                { x: padL + plotW, label: 't_setimbang' }
+            ];
+            xPositions.forEach(p => {
+                ctx.fillText(p.label, p.x, H - padB + 18);
+                ctx.beginPath();
+                ctx.moveTo(p.x, H - padB);
+                ctx.lineTo(p.x, H - padB + 4);
+                ctx.stroke();
+            });
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.fillText('Waktu →', padL + plotW / 2, H - padB + 35);
+
+            // Garis bantu kesetimbangan (mendatar dashed)
+            const ySetimbangH2 = 0.5;  // [H2], [I2] setimbang di 0.5 M
+            const ySetimbangHI = 1.0;  // [HI] setimbang di 1.0 M
+            ctx.strokeStyle = '#0d9488';
+            ctx.lineWidth = 0.8;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(padL, padT + plotH * (1 - ySetimbangH2 / yMax));
+            ctx.lineTo(W - padR, padT + plotH * (1 - ySetimbangH2 / yMax));
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(padL, padT + plotH * (1 - ySetimbangHI / yMax));
+            ctx.lineTo(W - padR, padT + plotH * (1 - ySetimbangHI / yMax));
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Fungsi konsentrasi sepanjang waktu (sigmoid-like exponential approach to equilibrium)
+            // progress 0 → 100 = t_awal → t_setimbang (dan seterusnya konstan)
+            function concHI(p) {
+                // HI naik dari 0 ke 1.0, mencapai setimbang di progress >= ~60
+                const tEq = 60;
+                if (p >= tEq) return 1.0;
+                return 1.0 * (1 - Math.exp(-3 * p / tEq));
+            }
+            function concH2(p) {
+                // H2 turun dari 1.0 ke 0.5, mencapai setimbang di progress >= 60
+                const tEq = 60;
+                if (p >= tEq) return 0.5;
+                return 1.0 - 0.5 * (1 - Math.exp(-3 * p / tEq));
+            }
+
+            // Gambar kurva H2/I2 (biru) — gambar dari progress 0 ke progress saat ini
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            const segments = 50;
+            for (let i = 0; i <= segments; i++) {
+                const p = (progress * i / segments);
+                const x = padL + (plotW * p / 100);
+                const conc = concH2(p);
+                const y = padT + plotH * (1 - conc / yMax);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Gambar kurva HI (merah)
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            for (let i = 0; i <= segments; i++) {
+                const p = (progress * i / segments);
+                const x = padL + (plotW * p / 100);
+                const conc = concHI(p);
+                const y = padT + plotH * (1 - conc / yMax);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Titik akhir (penanda posisi saat ini)
+            const currConcH2 = concH2(progress);
+            const currConcHI = concHI(progress);
+            const currX = padL + (plotW * progress / 100);
+            // H2 dot
+            ctx.fillStyle = '#2563eb';
+            ctx.beginPath();
+            ctx.arc(currX, padT + plotH * (1 - currConcH2 / yMax), 5, 0, Math.PI * 2);
+            ctx.fill();
+            // HI dot
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(currX, padT + plotH * (1 - currConcHI / yMax), 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Status text
+            const status = document.getElementById('statusKurva');
+            if (status) {
+                if (progress >= 60) {
+                    status.innerHTML = "Status: <strong class='text-teal-700'>Kesetimbangan tercapai</strong> — v<sub>maju</sub> = v<sub>balik</sub>, konsentrasi konstan";
+                    status.classList.add('bg-teal-50', 'text-teal-800');
+                    status.classList.remove('bg-slate-50', 'text-slate-600');
+                } else if (progress > 0) {
+                    status.innerHTML = `Status: Reaksi berlangsung... [H₂]=[I₂]=${currConcH2.toFixed(2)} M, [HI]=${currConcHI.toFixed(2)} M`;
+                    status.classList.remove('bg-teal-50', 'text-teal-800');
+                    status.classList.add('bg-slate-50', 'text-slate-600');
+                } else {
+                    status.innerHTML = "Status: Sistem pada t = 0 (belum ada produk terbentuk)";
+                    status.classList.remove('bg-teal-50', 'text-teal-800');
+                    status.classList.add('bg-slate-50', 'text-slate-600');
+                }
+            }
+        }
+
+        function updateKurva(val) {
+            kurvaProgress = parseInt(val);
+            drawKurva(kurvaProgress);
+            // Stop animasi kalau user manual geser
+            if (kurvaAnimTimer) {
+                clearInterval(kurvaAnimTimer);
+                kurvaAnimTimer = null;
+                const lbl = document.getElementById('playLabel');
+                if (lbl) lbl.innerText = 'Play';
+                const icon = document.querySelector('#btnPlayKurva i');
+                if (icon) icon.className = 'fa-solid fa-play';
+            }
+        }
+
+        function toggleKurvaAnim() {
+            const lbl = document.getElementById('playLabel');
+            const icon = document.querySelector('#btnPlayKurva i');
+            if (kurvaAnimTimer) {
+                // Pause
+                clearInterval(kurvaAnimTimer);
+                kurvaAnimTimer = null;
+                if (lbl) lbl.innerText = 'Play';
+                if (icon) icon.className = 'fa-solid fa-play';
+            } else {
+                // Play — reset kalau sudah di akhir
+                if (kurvaProgress >= 100) kurvaProgress = 0;
+                if (lbl) lbl.innerText = 'Pause';
+                if (icon) icon.className = 'fa-solid fa-pause';
+                kurvaAnimTimer = setInterval(() => {
+                    kurvaProgress += 2;
+                    if (kurvaProgress > 100) {
+                        kurvaProgress = 100;
+                        clearInterval(kurvaAnimTimer);
+                        kurvaAnimTimer = null;
+                        if (lbl) lbl.innerText = 'Reset';
+                        if (icon) icon.className = 'fa-solid fa-rotate-left';
+                    }
+                    const slider = document.getElementById('sliderWaktuKurva');
+                    if (slider) slider.value = kurvaProgress;
+                    drawKurva(kurvaProgress);
+                }, 80);
+            }
+        }
+
+        // Init kurva saat halaman load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Pastikan canvas tergambar dengan state awal
+            setTimeout(() => drawKurva(0), 200);
+        });
+
         // === KEGIATAN 1: DRAG & DROP DAN ANIMASI REAKSI DINAMIS ===
         function allowDrop(ev) { ev.preventDefault(); }
         function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
@@ -1030,15 +2111,16 @@
         function tambahReaktan() {
             const tabung = document.getElementById('tabungKonsentrasi');
             const status = document.getElementById('statusKonsentrasi');
-            tabung.classList.remove('bg-blue-300');
-            tabung.classList.add('bg-blue-800'); 
+            // Warna merah FeSCN²⁺ menggelap saat SCN⁻ ditambah (geser kanan)
+            tabung.classList.remove('bg-rose-300');
+            tabung.classList.add('bg-rose-800'); 
             status.classList.remove('opacity-0');
         }
         function resetKonsentrasi() {
             const tabung = document.getElementById('tabungKonsentrasi');
             const status = document.getElementById('statusKonsentrasi');
-            tabung.classList.remove('bg-blue-800');
-            tabung.classList.add('bg-blue-300');
+            tabung.classList.remove('bg-rose-800');
+            tabung.classList.add('bg-rose-300');
             status.classList.add('opacity-0');
         }
         function ubahSuhu(val) {
@@ -1062,6 +2144,44 @@
                 status.innerHTML = "Visual: Gas mulai berwarna cokelat pudar.";
             } else {
                 status.innerHTML = "Visual: Gas tidak berwarna.";
+            }
+        }
+
+        // === SIMULASI 3.3: PERUBAHAN TEKANAN (Piston Gas) ===
+        function ubahTekanan(val) {
+            const gas = document.getElementById('gasTekanan');
+            const piston = document.getElementById('pistonPlunger');
+            const status = document.getElementById('statusTekanan');
+            const volumeLabel = document.getElementById('volumeLabel');
+
+            // val 0 = tekanan rendah (volume besar), 100 = tekanan tinggi (volume kecil)
+            // Volume silinder berbanding terbalik dengan tekanan (Boyle: P1V1 = P2V2)
+            const volumePercent = 100 - (val * 0.55);   // dari 100% (val=0) → 45% (val=100)
+            const pistonTop = 100 - volumePercent;       // posisi plunger dari atas
+
+            // Pada kesetimbangan baru:
+            // Tekanan TINGGI → sistem geser ke sisi mol gas lebih sedikit (kiri: N2O4, tak berwarna) → opacity turun
+            // Tekanan RENDAH → sistem geser ke sisi mol gas lebih banyak (kanan: NO2, cokelat) → opacity naik
+            const equilibriumOpacity = 0.75 - (val / 100) * 0.55;  // 0.75 (rendah) → 0.20 (tinggi)
+
+            gas.style.height = volumePercent + '%';
+            gas.style.opacity = equilibriumOpacity.toFixed(2);
+            piston.style.top = pistonTop + '%';
+
+            // Hitung volume label (1.0 L pada val=50, ekspansi s/d 2.0 L saat val=0, kompresi s/d 0.45 L saat val=100)
+            const volumeLiter = (1.0 * (100 - val) / 50).toFixed(2);
+            volumeLabel.innerText = 'Volume: ' + volumeLiter + ' L';
+
+            if (val > 70) {
+                status.innerHTML = "Visual: Tekanan TINGGI → volume <strong>kecil</strong>. Sistem geser ke kiri (sisi 1 mol $N_2O_4$, <strong>tidak berwarna</strong>).";
+            } else if (val > 30) {
+                status.innerHTML = "Visual: Tekanan sedang → gas cokelat sedang.";
+            } else {
+                status.innerHTML = "Visual: Tekanan RENDAH → volume <strong>besar</strong>. Sistem geser ke kanan (sisi 2 mol $NO_2$, <strong>cokelat pekat</strong>).";
+            }
+            // FIX: MathJax tidak auto-render innerHTML baru — panggil typesetPromise secara eksplisit
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([status]).catch(() => {});
             }
         }
 
@@ -1099,9 +2219,10 @@
         function cekJawaban() {
             const nama = document.getElementById('namaSiswa').value.trim();
             const kelas = document.getElementById('kelasSiswa').value.trim();
+            const absen = document.getElementById('absenSiswa').value.trim();
             
-            if (!nama || !kelas) {
-                showModal("Identitas Belum Lengkap", "Silakan isi Nama dan Kelas terlebih dahulu di bagian atas LKPD!");
+            if (!nama || !kelas || !absen) {
+                showModal("Identitas Belum Lengkap", "Silakan isi Nama, Kelas, dan No. Absen terlebih dahulu di bagian atas LKPD!");
                 return;
             }
             
@@ -1110,76 +2231,201 @@
             const q2 = document.querySelector('input[name="soal2"]:checked');
             const q3 = document.querySelector('input[name="soal3"]:checked');
             const q4 = document.querySelector('input[name="soal4"]:checked');
+            const q5 = document.querySelector('input[name="soal5"]:checked');
+            const q6 = document.querySelector('input[name="soal6"]:checked');
+            const q7 = document.querySelector('input[name="soal7"]:checked');
+            const q8 = document.getElementById('soal8').value.trim();
+            const q9 = document.getElementById('soal9').value.trim();
+            const q10 = document.getElementById('soal10').value.trim();
             
-            document.querySelectorAll('.quiz-item').forEach(el => el.classList.remove('bg-red-50', 'bg-green-50', 'p-4', 'rounded-xl', 'border-green-300', 'border-red-300'));
+            document.querySelectorAll('.quiz-item').forEach(el => el.classList.remove('bg-red-50', 'bg-green-50', 'bg-amber-50', 'p-4', 'rounded-xl', 'border-green-300', 'border-red-300', 'border-amber-300'));
             
-            if(!q1 || !q2 || !q3 || !q4) {
-                showModal("Peringatan", "Silakan jawab semua soal terlebih dahulu ya!");
+            if(!q1 || !q2 || !q3 || !q4 || !q5 || !q6 || !q7 || !q8 || !q9 || !q10) {
+                showModal("Peringatan", "Silakan jawab semua 10 soal terlebih dahulu ya! (7 PG + 3 Essay)");
                 return;
             }
 
-            if(q1.value === 'B') { score += 25; document.getElementById('q1').classList.add('bg-green-50', 'p-4', 'rounded-xl', 'border-green-300'); } 
-            else { document.getElementById('q1').classList.add('bg-red-50', 'p-4', 'rounded-xl', 'border-red-300'); }
-            
-            if(q2.value === 'A') { score += 25; document.getElementById('q2').classList.add('bg-green-50', 'p-4', 'rounded-xl', 'border-green-300'); } 
-            else { document.getElementById('q2').classList.add('bg-red-50', 'p-4', 'rounded-xl', 'border-red-300'); }
-            
-            if(q3.value === 'C') { score += 25; document.getElementById('q3').classList.add('bg-green-50', 'p-4', 'rounded-xl', 'border-green-300'); } 
-            else { document.getElementById('q3').classList.add('bg-red-50', 'p-4', 'rounded-xl', 'border-red-300'); }
-            
-            if(q4.value === 'A') { score += 25; document.getElementById('q4').classList.add('bg-green-50', 'p-4', 'rounded-xl', 'border-green-300'); } 
-            else { document.getElementById('q4').classList.add('bg-red-50', 'p-4', 'rounded-xl', 'border-red-300'); }
-            
+            // 7 PG @ 10 poin = 70 poin
+            const answers = [
+                { q: q1, id: 'q1', correct: 'B' },
+                { q: q2, id: 'q2', correct: 'A' },
+                { q: q3, id: 'q3', correct: 'C' },
+                { q: q4, id: 'q4', correct: 'A' },
+                { q: q5, id: 'q5', correct: 'B' },
+                { q: q6, id: 'q6', correct: 'C' },
+                { q: q7, id: 'q7', correct: 'A' }
+            ];
+            answers.forEach(item => {
+                if (item.q.value === item.correct) {
+                    score += 10;
+                    document.getElementById(item.id).classList.add('bg-green-50', 'p-4', 'rounded-xl', 'border-green-300');
+                } else {
+                    document.getElementById(item.id).classList.add('bg-red-50', 'p-4', 'rounded-xl', 'border-red-300');
+                }
+            });
+
+            // 3 Essay: dinilai berdasarkan kata kunci & nilai akhir
+            let essayScore = 0;
+            let essayFeedback = [];
+
+            // === Q8: Kc untuk 2SO2 + O2 ⇌ 2SO3 ===
+            // Jawaban benar: Kc = [SO3]^2/([SO2]^2*[O2]) = (0.4)^2/((0.1)^2*0.2) = 0.16/0.002 = 80
+            const a8 = q8.toLowerCase();
+            let q8Score = 0;
+            // Cek rumus: harus ada [SO3] dan [SO2] dan [O2] atau sebutan pangkat
+            const a8HasFormula = /\[so3\]/i.test(q8) && /\[so2\]/i.test(q8) && /\[o2\]/i.test(q8);
+            // Cek hasil akhir 80
+            const a8HasResult = /\b80\b/.test(q8) || /\b80\.0\b/.test(q8);
+            // Cek subtitusi (0.4)^2 atau 0.16 dan (0.1)^2 atau 0.002
+            const a8HasSubst = /0\.4\^?2|0\.16/.test(q8) && /0\.1\^?2|0\.01|0\.002/.test(q8);
+            if (a8HasFormula) q8Score += 3;
+            if (a8HasSubst) q8Score += 3;
+            if (a8HasResult) q8Score += 4;
+            essayScore += q8Score;
+            essayFeedback.push(`Q8: ${q8Score}/10 ${q8Score === 10 ? '✓' : '(' + (a8HasFormula ? '✓rumus' : '✗rumus') + ' ' + (a8HasSubst ? '✓subst' : '✗subst') + ' ' + (a8HasResult ? '✓hasil' : '✗hasil') + ')'}`);
+            document.getElementById('q8').classList.add(q8Score >= 7 ? 'bg-green-50' : q8Score >= 4 ? 'bg-amber-50' : 'bg-red-50', 'p-4', 'rounded-xl', q8Score >= 7 ? 'border-green-300' : q8Score >= 4 ? 'border-amber-300' : 'border-red-300');
+
+            // === Q9: Kp untuk N2 + 3H2 ⇌ 2NH3, Kc=0.5, T=400K ===
+            // Δn = 2 - (1+3) = -2 ; Kp = 0.5*(0.0821*400)^-2 = 0.5*(32.84)^-2 ≈ 4.64e-4
+            const a9 = q9.toLowerCase();
+            let q9Score = 0;
+            // Cek Δn = -2
+            const a9HasDeltaN = /δn\s*=\s*-?\s*2|δn\s*=\s*-\s*2|δn=-2|delta\s*n\s*=\s*-\s*2/i.test(q9) || 
+                                (/-2/.test(q9) && /δn|delta\s*n/i.test(q9));
+            // Cek RT = 0.0821*400 = 32.84
+            const a9HasRT = /0\.0821\s*\*\s*400|32\.84|RT\s*=\s*32/i.test(q9);
+            // Cek hasil akhir sekitar 4.6e-4 atau 0.00046 atau 4.64*10^-4
+            const a9HasResult = /4\.6\s*[×x*]?\s*10\s*\^?\s*-*4|4\.64\s*[×x*]?\s*10\s*\^?\s*-*4|0\.00046|4\.6e-?4|4\.64e-?4/i.test(q9);
+            if (a9HasDeltaN) q9Score += 3;
+            if (a9HasRT) q9Score += 3;
+            if (a9HasResult) q9Score += 4;
+            essayScore += q9Score;
+            essayFeedback.push(`Q9: ${q9Score}/10 ${q9Score === 10 ? '✓' : '(' + (a9HasDeltaN ? '✓Δn' : '✗Δn') + ' ' + (a9HasRT ? '✓RT' : '✗RT') + ' ' + (a9HasResult ? '✓hasil' : '✗hasil') + ')'}`);
+            document.getElementById('q9').classList.add(q9Score >= 7 ? 'bg-green-50' : q9Score >= 4 ? 'bg-amber-50' : 'bg-red-50', 'p-4', 'rounded-xl', q9Score >= 7 ? 'border-green-300' : q9Score >= 4 ? 'border-amber-300' : 'border-red-300');
+
+            // === Q10: Analisis PCl5 endoterm ===
+            // Harus mention: endoterm, suhu naik → geser kanan/produk, tekanan naik → geser kiri/reaktan/mol sedikit
+            // Untuk maksimalkan Cl2: suhu tinggi + tekanan rendah
+            const a10 = q10.toLowerCase();
+            let q10Score = 0;
+            const a10Kw = {
+                endoterm: /endoterm/.test(a10),
+                suhuNaikGeserKanan: (/(suhu|temperatur).*(naik|tinggi|dinaikkan)/.test(a10) && /(kanan|maju|produk|pccl3|pcl3|cl2)/.test(a10)) || /(kanan|produk)/.test(a10) && /(suhu|panas)/.test(a10),
+                tekananNaikGeserKiri: (/(tekanan|volume).*(naik|kecil|diperkecil)/.test(a10) && /(kiri|balik|reaktan|pcl5)/.test(a10)) || /(kiri|reaktan)/.test(a10) && /tekanan/.test(a10),
+                molSedikit: /mol.*sedikit|lebih sedikit|sisi.*1\s*mol|fewer\s*mol/i.test(a10),
+                maksimalSuhuTinggi: /suhu.*tinggi|suhu.*naik|dinaikkan/i.test(a10),
+                maksimalTekananRendah: /tekanan.*rendah|tekanan.*turun|diturunkan|volume.*besar/i.test(a10)
+            };
+            const matchedCount = Object.values(a10Kw).filter(Boolean).length;
+            // 6 kata kunci, masing-masing ~1.67 poin (rounding: 1.67 * matched)
+            q10Score = Math.min(10, Math.round(matchedCount * 10 / 6));
+            essayScore += q10Score;
+            const matchedKwList = Object.entries(a10Kw).filter(([_, v]) => v).map(([k]) => k);
+            essayFeedback.push(`Q10: ${q10Score}/10 (cocok: ${matchedCount}/6: ${matchedKwList.join(', ') || 'tidak ada'})`);
+            document.getElementById('q10').classList.add(q10Score >= 7 ? 'bg-green-50' : q10Score >= 4 ? 'bg-amber-50' : 'bg-red-50', 'p-4', 'rounded-xl', q10Score >= 7 ? 'border-green-300' : q10Score >= 4 ? 'border-amber-300' : 'border-red-300');
+
             const scoreDisplay = document.getElementById('scoreDisplay');
-            scoreDisplay.innerText = score;
-            window.lastCalculatedScore = score; 
+            const pgScore = score;                    // maks 70
+            const totalScore = pgScore + essayScore;  // maks 100
+            scoreDisplay.innerText = totalScore + ' / 100';
+            window.lastCalculatedScore = totalScore;  // simpan total untuk rekap guru
             
             const feedbackBox = document.getElementById('quizFeedback');
             feedbackBox.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-amber-100', 'text-amber-800');
             
-            if(score === 100) {
+            if (totalScore >= 85) {
                 feedbackBox.classList.add('bg-green-100', 'text-green-800');
-                feedbackBox.innerHTML = `<i class='fa-solid fa-trophy text-yellow-500 mr-2'></i>Luar Biasa, <strong>${nama}</strong>! Kamu telah menguasai seluruh pilar konsep Kesetimbangan Kimia.`;
-            } else if(score >= 50) {
+                feedbackBox.innerHTML = `<i class='fa-solid fa-trophy text-yellow-500 mr-2'></i>Luar Biasa, <strong>${nama}</strong>! Total: ${totalScore}/100 (PG: ${pgScore}/70, Essay: ${essayScore}/30). <br><span class="text-xs font-normal">${essayFeedback.join(' · ')}</span>`;
+            } else if (totalScore >= 60) {
                 feedbackBox.classList.add('bg-amber-100', 'text-amber-800');
-                feedbackBox.innerHTML = `Kerja bagus, <strong>${nama}</strong>! Cek kembali jawaban soal yang masih merah muda.`;
+                feedbackBox.innerHTML = `Kerja bagus, <strong>${nama}</strong>! Total: ${totalScore}/100 (PG: ${pgScore}/70, Essay: ${essayScore}/30). <br><span class="text-xs font-normal">${essayFeedback.join(' · ')}</span><br><span class="text-xs">Cek kotak merah/oranye untuk jawaban yang masih kurang tepat.</span>`;
             } else {
                 feedbackBox.classList.add('bg-red-100', 'text-red-800');
-                feedbackBox.innerHTML = `Jangan menyerah, <strong>${nama}</strong>! Ayo amati kembali modul konsepnya pelan-pelan.`;
+                feedbackBox.innerHTML = `Jangan menyerah, <strong>${nama}</strong>! Total: ${totalScore}/100 (PG: ${pgScore}/70, Essay: ${essayScore}/30). <br><span class="text-xs font-normal">${essayFeedback.join(' · ')}</span><br><span class="text-xs">Amati kembali modul konsep di tab 1-4, lalu coba jawab ulang soal yang salah.</span>`;
+            }
+
+            // === AUTO-SUBMIT KE SPREADSHEET GURU ===
+            const submitData = {
+                waktu: new Date().toLocaleString('id-ID'),
+                nama: nama,
+                kelas: kelas,
+                absen: absen,
+                skorPG: pgScore,
+                skorEssay: essayScore,
+                skorTotal: totalScore,
+                detailEssay: essayFeedback.join(' | ')
+            };
+
+            // Tampilkan indikator "Mengirim..." dulu
+            const statusBadge = document.getElementById('submitStatus');
+            if (statusBadge) {
+                statusBadge.classList.remove('hidden', 'bg-slate-100', 'text-slate-600', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700', 'bg-amber-100', 'text-amber-700');
+                statusBadge.classList.add('bg-blue-100', 'text-blue-700');
+                statusBadge.innerHTML = "<i class='fa-solid fa-circle-notch fa-spin mr-1'></i>Mengirim skor...";
+            }
+
+            submitToSpreadsheet(submitData).then(result => {
+                if (!statusBadge) return;
+                statusBadge.classList.remove('bg-blue-100', 'text-blue-700');
+                if (result.success) {
+                    statusBadge.classList.add('bg-green-100', 'text-green-700');
+                    statusBadge.innerHTML = "<i class='fa-solid fa-check-circle mr-1'></i>Skor terkirim ke guru";
+                } else if (result.reason === 'not_configured') {
+                    statusBadge.classList.add('bg-amber-100', 'text-amber-700');
+                    statusBadge.innerHTML = "<i class='fa-solid fa-info-circle mr-1'></i>Auto-submit belum dikonfigurasi — skor tersimpan lokal saja";
+                } else {
+                    statusBadge.classList.add('bg-red-100', 'text-red-700');
+                    statusBadge.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i>Gagal kirim (jaringan). Cetak PDF sebagai cadangan.";
+                }
+            });
+        }
+
+        // === FUNGSI AUTO-SUBMIT KE GOOGLE SPREADSHEET ===
+        // Ganti URL berikut dengan URL Web App Google Apps Script Anda (lihat Panduan Setup Guru).
+        // Biarkan kosong ("") jika belum dikonfigurasi — siswa tetap bisa kerjakan, skor disimpan lokal saja.
+        const GOOGLE_SCRIPT_URL = "";  // <-- PASTE URL DI SINI
+
+        async function submitToSpreadsheet(scoreData) {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.trim() === "") {
+                return { success: false, reason: "not_configured" };
+            }
+            try {
+                // Pakai no-cors mode karena Google Apps Script tidak kirim CORS headers
+                // Response tidak bisa dibaca, tapi POST tetap sampai ke server
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(scoreData).toString()
+                });
+                return { success: true };
+            } catch (err) {
+                console.error("Submit error:", err);
+                return { success: false, reason: "network_error", error: err.message };
             }
         }
 
-        // === FUNGSI PANEL GURU (REKAP DATA) ===
-        function bukaPanelGuru() {
-            const pin = prompt("Masukkan PIN Keamanan Guru (Default: 1234):");
-            if (pin === "1234") {
-                const nama = document.getElementById('namaSiswa').value.trim() || "Belum Diisi";
-                const kelas = document.getElementById('kelasSiswa').value.trim() || "Belum Diisi";
-                const skor = window.lastCalculatedScore !== undefined ? window.lastCalculatedScore : "Belum Kuis";
-                const waktu = new Date().toLocaleString('id-ID');
-                
-                const formatTSV = `${waktu}\t${nama}\t${kelas}\t${skor}`;
-                const tempTextArea = document.createElement('textarea');
-                tempTextArea.value = formatTSV;
-                document.body.appendChild(tempTextArea);
-                tempTextArea.select();
-                try {
-                    document.execCommand('copy');
-                    showModal("Berhasil Disalin! 📊", `Data nilai ${nama} telah disalin ke clipboard.\nBuka Google Spreadsheet lalu tekan CTRL+V di kolom tujuan.`);
-                } catch(err) {
-                    showModal("Info Gagal Salin Otomatis", "Blok dan copy data ini:\n\n" + formatTSV);
-                }
-                document.body.removeChild(tempTextArea);
-            } else if (pin) {
-                showModal("Akses Ditolak", "PIN yang Anda masukkan salah.");
-            }
+        // Modal Panduan Setup Guru
+        function openSetupModal() {
+            const modal = document.getElementById('setupModal');
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
         }
+        function closeSetupModal() {
+            const modal = document.getElementById('setupModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
 
         // === FUNGSI CETAK LAPORAN SISWA (PDF) ===
         function cetakLaporanSiswa() {
             const nama = document.getElementById('namaSiswa').value.trim();
-            if(!nama) {
-                showModal("Identitas Belum Lengkap", "Hai! Tolong lengkapi Nama dan Kelas di bagian paling atas web sebelum mencetak PDF agar datamu tidak hilang.");
+            const kelas = document.getElementById('kelasSiswa').value.trim();
+            const absen = document.getElementById('absenSiswa').value.trim();
+            if(!nama || !kelas || !absen) {
+                showModal("Identitas Belum Lengkap", "Hai! Tolong lengkapi Nama, Kelas, dan No. Absen di bagian paling atas web sebelum mencetak PDF agar datamu tidak hilang.");
                 return;
             }
             
@@ -1233,9 +2479,9 @@
             const opt = {
                 margin:       [10, 10, 15, 10],
                 filename:     `LKPD_Kimia_${nama.replace(/\s+/g, '_')}.pdf`,
-                image:        { type: 'jpeg', quality: 0.85, compression: 'FAST' },
+                image:        { type: 'jpeg', quality: 0.92, compression: 'FAST' },
                 html2canvas:  {
-                    scale: 1.5,
+                    scale: 2,
                     useCORS: true,
                     scrollY: 0,
                     letterRendering: true,
@@ -1265,8 +2511,8 @@
     },
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
     pagebreak:    {
-        mode:      ['avoid-all', 'css', 'legacy'],
-        avoid:     ['.quiz-item', '.bg-white', '.bg-slate-50', '.bg-blue-50', '.bg-orange-50', '.bg-amber-50', '.bg-chem-50', '.bg-rose-50', 'table', 'tr', '.rounded-xl', '.rounded-2xl', '.rounded-lg']
+        mode:      ['css', 'legacy'],   /* hapus 'avoid-all' agar tidak semua elemen dipaksa utuh */
+        avoid:     ['.quiz-item', 'table', 'tr', '.keep-together']
     }
 };
             
