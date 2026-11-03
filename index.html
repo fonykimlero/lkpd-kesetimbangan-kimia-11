@@ -1111,6 +1111,9 @@
             
             showModal("Menyiapkan PDF 🖨️", "Mohon tunggu sebentar, laporan LKPD Anda sedang diproses menjadi file PDF...");
 
+            // Perbaikan Halaman Kosong: Paksa layar kembali ke paling atas sebelum direkam
+            window.scrollTo(0, 0);
+
             // 1. Sinkronisasi nilai input/textarea ke DOM agar terbaca oleh pembuat PDF
             document.querySelectorAll('input, textarea, select').forEach(el => {
                 if(el.tagName.toLowerCase() === 'textarea') {
@@ -1137,11 +1140,17 @@
 
             // 4. Konfigurasi html2pdf
             const element = document.querySelector('main');
+            
+            // Tambahkan latar belakang sementara agar tidak transparan/kosong
+            const originalBg = element.style.backgroundColor;
+            element.style.backgroundColor = '#f8fafc'; // Warna selaras latar belakang web
+
             const opt = {
                 margin:       [10, 10, 15, 10], // atas, kiri, bawah, kanan
                 filename:     `LKPD_Kimia_${nama.replace(/\s+/g, '_')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
+                // Tambahan scrollY: 0 sangat krusial untuk mencegah PDF tercetak putih/kosong
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 }, 
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
@@ -1156,6 +1165,7 @@
                     document.getElementById('tab-refleksi').classList.add('active');
                     
                     noPrintElements.forEach(el => el.style.display = '');
+                    element.style.backgroundColor = originalBg;
                     closeModal();
                 }).catch(err => {
                     console.error(err);
