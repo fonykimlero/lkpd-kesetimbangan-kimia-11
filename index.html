@@ -72,13 +72,14 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Khusus mode cetak / Print & PDF Styling agar pekat */
+        /* Khusus mode cetak / Print & PDF Styling agar pekat dan tajam */
         @media print {
-            body { background-color: white !important; color: #000 !important; }
+            body { background-color: white !important; color: #000000 !important; }
             .no-print { display: none !important; }
             .tab-content { display: block !important; opacity: 1 !important; page-break-inside: avoid; margin-bottom: 20px; }
             .shadow-sm, .shadow-md { box-shadow: none !important; border: 1px solid #cbd5e1; }
-            input, textarea, select { color: #000 !important; -webkit-text-fill-color: #000 !important; opacity: 1 !important; background-color: #fff !important; border: 1px solid #94a3b8 !important; }
+            input, select { color: #000000 !important; -webkit-text-fill-color: #000000 !important; opacity: 1 !important; background-color: #ffffff !important; border: 1px solid #64748b !important; font-weight: 600 !important; }
+            textarea { color: #000000 !important; -webkit-text-fill-color: #000000 !important; opacity: 1 !important; background-color: #ffffff !important; border: 1px solid #64748b !important; font-weight: 500 !important; }
         }
     </style>
 </head>
@@ -1115,30 +1116,34 @@
             // Perbaikan Halaman Kosong: Paksa layar kembali ke paling atas sebelum direkam
             window.scrollTo(0, 0);
 
-            // 1. Sinkronisasi nilai input/textarea ke DOM agar terbaca pekat oleh pembuat PDF
+            // 1. Sinkronisasi mutlak nilai input/textarea ke atribut DOM agar terbaca pekat oleh html2canvas
             document.querySelectorAll('input, textarea, select').forEach(el => {
                 if(el.tagName.toLowerCase() === 'textarea') {
-                    el.innerHTML = el.value;
-                    el.style.color = '#000000';
-                    el.style.backgroundColor = '#ffffff';
-                    el.style.opacity = '1';
+                    el.innerText = el.value;
+                    el.setAttribute('value', el.value);
+                    el.style.setProperty('color', '#000000', 'important');
+                    el.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
+                    el.style.setProperty('background-color', '#ffffff', 'important');
+                    el.style.setProperty('opacity', '1', 'important');
                 } else if (el.tagName.toLowerCase() === 'select') {
-                    el.style.color = '#000000';
-                    el.style.backgroundColor = '#ffffff';
-                    el.style.opacity = '1';
+                    el.style.setProperty('color', '#000000', 'important');
+                    el.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
+                    el.style.setProperty('background-color', '#ffffff', 'important');
+                    el.style.setProperty('opacity', '1', 'important');
                     Array.from(el.options).forEach(opt => {
                         if (opt.value === el.value) opt.setAttribute('selected', 'selected');
                         else opt.removeAttribute('selected');
                     });
                 } else if (el.type === 'text' || el.type === 'number') {
                     el.setAttribute('value', el.value);
-                    el.style.color = '#000000';
-                    el.style.backgroundColor = '#ffffff';
-                    el.style.opacity = '1';
+                    el.style.setProperty('color', '#000000', 'important');
+                    el.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
+                    el.style.setProperty('background-color', '#ffffff', 'important');
+                    el.style.setProperty('opacity', '1', 'important');
                 }
             });
 
-            // 2. Tampilkan SEMUA tab agar masuk ke dalam PDF
+            // 2. Tampilkan SEMUA tab agar masuk ke dalam PDF secara utuh
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.style.display = 'block';
                 tab.classList.add('active');
@@ -1150,20 +1155,18 @@
 
             // 4. Konfigurasi html2pdf
             const element = document.querySelector('main');
-            
-            // Tambahkan latar belakang solid putih agar kontras teks tajam
             const originalBg = element.style.backgroundColor;
             element.style.backgroundColor = '#ffffff'; 
 
             const opt = {
-                margin:       [10, 10, 15, 10], // atas, kiri, bawah, kanan
+                margin:       [10, 10, 15, 10],
                 filename:     `LKPD_Kimia_${nama.replace(/\s+/g, '_')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, scrollY: 0, letterRendering: true }, 
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // 5. Eksekusi pembuatan PDF dengan jeda render
+            // 5. Eksekusi pembuatan PDF
             setTimeout(() => {
                 html2pdf().set(opt).from(element).save().then(() => {
                     // Kembalikan ke tampilan normal setelah selesai download
